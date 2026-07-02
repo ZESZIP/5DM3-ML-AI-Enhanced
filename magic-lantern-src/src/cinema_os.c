@@ -134,8 +134,10 @@ void cinema_os_draw_status_footer(void)
     if (!cinema_os_enabled()) return;
 
     int foot_y = 432;
+    int page_c = cinema_os_page_color(cinema_os_active_page());
     bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
-    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 12, foot_y + 4, "CINE AI ENHANCED");
+    bmp_fill(page_c, 0, foot_y, 720, 3);
+    bmp_printf(FONT(FONT_MED, page_c, COLOR_BLACK), 12, foot_y + 4, "CINE AI ENHANCED");
     bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 12, foot_y + 24,
         "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
 
@@ -295,6 +297,7 @@ void cinema_os_draw_nav_bar(int y)
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
 {
     int c = cinema_os_page_color(page);
+    int dark = COLOR_GRAY(12);
 
     if (page == CINE_PAGE_CINEMATIC)
     {
@@ -305,9 +308,13 @@ void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
     }
     else
     {
-        bmp_fill(COLOR_BLACK, 0, y0, 720, h);
-        bmp_fill(c, 0, y0, 8, h);
-        bmp_printf(FONT(FONT_MED, c, COLOR_BLACK), 16, y0 + 6, "%s", page_labels[page]);
+        bmp_fill(dark, 0, y0, 720, h);
+        bmp_fill(c, 0, y0, 12, h);
+        bmp_fill(c, 0, y0, 720, 4);
+        cine_ui_draw_shadow(16, y0 + 12, 688, h - 24, 3);
+        bmp_fill(COLOR_GRAY(16), 16, y0 + 12, 688, h - 24);
+        bmp_draw_rect(c, 16, y0 + 12, 688, h - 24);
+        bmp_printf(FONT(FONT_MED, c, COLOR_GRAY(16)), 28, y0 + 18, "%s", page_labels[page]);
     }
 }
 
@@ -459,7 +466,7 @@ void cinema_os_get_entry_colors(
     {
         if (sel) { *bg = tab_c; *fg = COLOR_WHITE; }
         else if (warn) { *bg = 45; *fg = COLOR_GRAY(45); }
-        else { *bg = COLOR_BLACK; *fg = COLOR_GRAY(60); }
+        else { *bg = COLOR_GRAY(14); *fg = tab_c; }
     }
 
     (void) selected_row;

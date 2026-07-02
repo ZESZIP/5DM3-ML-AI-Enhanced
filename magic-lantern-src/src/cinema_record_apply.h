@@ -12,7 +12,9 @@ typedef enum {
 void cinema_record_set_beast(int beast);
 void cinema_record_set_resolution(int res_idx);
 void cinema_record_set_fps(int fps_idx);
-void cinema_record_set_format_idx(int fmt_idx); /* 0=MOV, 1..5=MLV variants */
+void cinema_record_set_format_idx(int fmt_idx);
+void cinema_record_set_sensor_pct(int pct);
+void cinema_record_set_lv_pct(int pct);
 
 int cinema_record_apply_full(void);
 int cinema_record_mlv_armed(void);

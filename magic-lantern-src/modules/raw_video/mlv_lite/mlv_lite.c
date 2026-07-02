@@ -75,8 +75,16 @@
 #include "../../../src/cinema_governor.h"
 #include "timer.h"
 #include "ml-cbr.h"
+#include "cine_codec.h"
 #include "../../silent/lossless.h"
 #include "ml-cbr.h"
+
+/* CINEPACK hooks live in main binary; weak stubs keep module loadable */
+extern WEAK_FUNC(ret_0) int cine_codec_enabled(void);
+extern WEAK_FUNC(ret_0) int cine_codec_quality(void);
+extern WEAK_FUNC(ret_0) int cinepack_compress(
+    void * dst, int dst_max, const void * src, int src_bytes,
+    int width, int height, int quality_pct);
 
 THREAD_ROLE(RawRecTask);            /* our raw recording task */
 THREAD_ROLE(ShootTask);             /* polling CBR */
@@ -2727,7 +2735,19 @@ static void compress_task()
 
         edmac_start_clock = GET_DIGIC_TIMER();
 
-        if (OUTPUT_COMPRESSION)
+        int compressed_size = 0;
+
+        if (cine_codec_enabled())
+        {
+            compressed_size = cinepack_compress(
+                out_ptr, max_frame_size - VIDF_HDR_SIZE,
+                fullSizeBuffer, frame_size_uncompressed,
+                res_x, res_y, cine_codec_quality());
+
+            if (compressed_size > 0 && !RAW_IS_IDLE)
+                shrink_slot(slot_index, MIN(compressed_size, max_frame_size - VIDF_HDR_SIZE - 4));
+        }
+        else if (OUTPUT_COMPRESSION)
         {
             /* PackMem appears to require stricter memory alignment */
             ASSERT(((uint32_t)out_ptr & 0x3F) == 0);
@@ -2735,15 +2755,13 @@ static void compress_task()
             struct memSuite * outSuite = CreateMemorySuite(out_ptr, max_frame_size, 0);
             ASSERT(outSuite);
 
-            int compressed_size = lossless_compress_raw_rectangle(
+            int compressed_size_lj = lossless_compress_raw_rectangle(
                 outSuite, fullSizeBuffer,
                 raw_info.width, (skip_x + 7) & ~7, skip_y & ~1,
                 res_x, res_y
             );
+            compressed_size = compressed_size_lj;
 
-            /* only report compression errors while recording
-             * some of them appear during video mode switches
-             * unlikely to cause actual trouble - silence them for now */
             if (compressed_size < 0 && !RAW_IS_IDLE)
             {
                 printf("Compression error %d at frame %d\n", compressed_size, frame_count-1);
@@ -4455,6 +4473,44 @@ static unsigned int raw_rec_init()
     ASSERT(((uint32_t)task_create("compress_task", 0x0F, 0x1000, compress_task, (void*)0) & 1) == 0);
 
     return 0;
+}
+
+/* Cine AI bridge — called from main binary via module_get_symbol */
+unsigned int mlv_lite_cine_arm(
+    unsigned int enable,
+    unsigned int res_x_idx,
+    unsigned int aspect,
+    unsigned int fmt,
+    unsigned int preview_scale
+)
+{
+    if (!lv || !is_movie_mode())
+        return 0;
+
+    if (!enable)
+    {
+        raw_video_enabled = 0;
+        return 1;
+    }
+
+    resolution_index_x = COERCE((int) res_x_idx, 0, COUNT(resolution_presets_x) - 1);
+    res_x_fine = 0;
+    aspect_ratio_index = COERCE((int) aspect, 0, COUNT(aspect_ratio_presets_num) - 1);
+    output_format = COERCE((int) fmt, 0, 5);
+    preview_lv_scale_index = COERCE((int) preview_scale, 0, COUNT(preview_lv_scale_values) - 1);
+    h264_proxy_menu = 0;
+    preview_mode = 2; /* ML framing preview */
+    raw_video_enabled = 1;
+
+    refresh_raw_settings(1);
+    return raw_video_enabled ? 1 : 0;
+}
+
+unsigned int mlv_lite_cine_status(unsigned int * res_out, unsigned int * fmt_out)
+{
+    if (res_out) *res_out = resolution_index_x;
+    if (fmt_out) *fmt_out = output_format;
+    return raw_video_enabled ? 1 : 0;
 }
 
 static unsigned int raw_rec_deinit()

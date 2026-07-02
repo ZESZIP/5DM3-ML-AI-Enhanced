@@ -29,8 +29,14 @@ static const char * fmt_opts[] = {
     "MLV 12-bit",
     "MLV 10-bit",
     "MLV LJ92 14-bit",
-    "MLV LJ92 12-bit"
+    "MLV LJ92 12-bit",
+    "CINEPACK Pro"
 };
+
+static const char * sensor_opts[] = { "Sensor 100%", "Sensor 75%", "Sensor 50%", "Sensor 25%" };
+static const int    sensor_vals[]  = { 100, 75, 50, 25 };
+static const char * lv_opts[]     = { "LV preview 100%", "LV preview 75%", "LV preview 50%", "LV preview 25%" };
+static const int    lv_vals[]     = { 100, 75, 50, 25 };
 
 static const int row_icons[] = {
     ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
@@ -46,7 +52,7 @@ static int panel_option_count(int row)
 {
     switch (row)
     {
-        case 0: return COUNT(beast_labels) + COUNT(res_labels);
+        case 0: return COUNT(beast_labels) + COUNT(res_labels) + COUNT(sensor_opts) + COUNT(lv_opts);
         case 1: return COUNT(fps_opts);
         case 2: return COUNT(fmt_opts);
         case 3: return 7;
@@ -84,8 +90,12 @@ static void panel_get_label(int row, int opt, char * buf, int len)
         case 0:
             if (opt < COUNT(beast_labels))
                 snprintf(buf, len, "%s", beast_labels[opt]);
-            else
+            else if (opt < COUNT(beast_labels) + COUNT(res_labels))
                 snprintf(buf, len, "%s", res_labels[opt - COUNT(beast_labels)]);
+            else if (opt < COUNT(beast_labels) + COUNT(res_labels) + COUNT(sensor_opts))
+                snprintf(buf, len, "%s", sensor_opts[opt - COUNT(beast_labels) - COUNT(res_labels)]);
+            else
+                snprintf(buf, len, "%s", lv_opts[opt - COUNT(beast_labels) - COUNT(res_labels) - COUNT(sensor_opts)]);
             break;
         case 1: snprintf(buf, len, "%s", fps_opts[opt]); break;
         case 2: snprintf(buf, len, "%s", fmt_opts[opt]); break;
@@ -137,13 +147,28 @@ static int panel_apply(int row, int opt)
     switch (row)
     {
         case 0:
-            if (opt < COUNT(beast_labels))
+        {
+            int base = COUNT(beast_labels);
+            int res_base = base + COUNT(res_labels);
+            int sen_base = res_base + COUNT(sensor_opts);
+            if (opt < base)
             {
                 cinema_record_set_beast(opt + 1);
                 return cinema_record_apply_full();
             }
-            cinema_record_set_resolution(opt - COUNT(beast_labels));
+            if (opt < res_base)
+            {
+                cinema_record_set_resolution(opt - base);
+                return cinema_record_apply_full();
+            }
+            if (opt < sen_base)
+            {
+                cinema_record_set_sensor_pct(sensor_vals[opt - res_base]);
+                return cinema_record_apply_full();
+            }
+            cinema_record_set_lv_pct(lv_vals[opt - sen_base]);
             return cinema_record_apply_full();
+        }
 
         case 1:
             cinema_record_set_fps(opt);
@@ -266,10 +291,7 @@ void cinema_panel_draw(int y0, int body_h)
     }
 
     bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_BLACK), px + 20, py + ph - 28,
-        "L/R change   SET apply & arm   MENU back");
-    if (panel_row <= 2)
-        bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), px + 20, py + ph - 12,
-            "MLV: press camera REC button   |   MOV: Canon H.264");
+        "L/R change   SET apply   MENU back");
 }
 
 int cinema_panel_handle_key(unsigned int key)
