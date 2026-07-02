@@ -135,6 +135,14 @@ static CONFIG_INT("idle.rec", idle_rec, 0);
 static CONFIG_INT("idle.dis.30min", idle_disable_30min_timer, 0);
 static CONFIG_INT("idle.shortcut.key", idle_shortcut_key, 0);
 
+/* 2026 update: unconditionally override Canon's Auto Power Off and the
+ * 30-minute LiveView limit, regardless of the Canon menu setting. Useful
+ * for long unattended recording sessions where you'd rather the camera keep
+ * running (even risking a thermal shutdown) than stop on its own. There is
+ * no thermal protection left once this is enabled - if the body gets too
+ * hot to touch, pull the battery. */
+static CONFIG_INT("idle.never.poweroff", idle_never_poweroff, 0);
+
 /* also used in zebra.c */
 volatile int idle_globaldraw_disable = 0;
 
@@ -433,6 +441,20 @@ static void idle_stop_killing_flicker()
 /* called from zebra.c (only in LiveView) */
 void idle_powersave_step()
 {
+    if (idle_never_poweroff)
+    {
+        /* keep resetting Canon's internal auto power-off / LiveView timers
+         * no matter what: not gated by the Canon menu "Auto power off"
+         * setting like idle_disable_30min_timer is. This is the "push
+         * through no matter what" override - see warning in the menu. */
+        static int last_prolong = 0;
+        if (should_run_polling_action(3000, &last_prolong))
+        {
+            info_led_blink(1, 20, 20);
+            powersave_prohibit();
+        }
+    }
+
     if (RECORDING && idle_rec == 0) // don't go to powersave when recording
         idle_wakeup_reset_counters(-2345);
     
@@ -645,6 +667,18 @@ static struct menu_entry powersave_menus[] = {
             .icon_type      = IT_DISABLE_SOME_FEATURE,
             .help           = "Prevent Canon firmware from turning off LiveView after 30 minutes.",
             .help2          = "LED will blink every 10s. WARNING: this limit is there for good reason!",
+        },
+        {
+            .name           = "Never power off (override)",
+            .priv           = &idle_never_poweroff,
+            .max            = 1,
+            .choices        = CHOICES("OFF", "ON (risky)"),
+            .icon_type      = IT_DISABLE_SOME_FEATURE,
+            .help           = "Overrides Auto Power Off / 30-min limit, regardless of Canon menu.",
+            .help2          = "Keeps the camera running even if Canon wants to shut it down\n"
+                              "(e.g. due to heat). LED blinks every 3s as a reminder.\n"
+                              "WARNING: no thermal protection is left - if the body feels\n"
+                              "too hot to touch, remove the battery immediately.",
         },
         MENU_EOL
     },

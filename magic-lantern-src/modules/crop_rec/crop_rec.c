@@ -28,6 +28,13 @@ static int is_basic = 0;
 static CONFIG_INT("crop.preset", crop_preset_index, 0);
 static CONFIG_INT("crop.shutter_range", shutter_range, 0);
 
+/* quick percentage-based LiveView/recording resolution control (2026 update)
+ * this eases the sensor readout / DIGIC processing load by requesting fewer
+ * vertical lines from the current crop mode preset, in percent, instead of
+ * having to dial in an absolute pixel count via "Target YRES" */
+static CONFIG_INT("crop.lv_res_pct", lv_res_percent_index, 0);
+static const int lv_res_percent_values[] = {100, 75, 50, 25};
+
 enum crop_preset {
     CROP_PRESET_OFF = 0,
     CROP_PRESET_3X,
@@ -294,8 +301,23 @@ static int max_resolutions[NUM_CROP_PRESETS][6] = {
 /* note that first scanline may be moved down by 30 px (see reg_override_top_bar) */
 static inline int FAST calc_yres_delta()
 {
-    int desired_yres = (target_yres) ? target_yres
-        : max_resolutions[crop_preset][get_video_mode_index()];
+    int max_yres = max_resolutions[crop_preset][get_video_mode_index()];
+
+    /* priority: explicit "Target YRES" override, then the quick
+     * "LiveView Resolution %" shortcut, then the preset's default (100%) */
+    int desired_yres = target_yres;
+
+    if (!desired_yres && lv_res_percent_index && max_yres)
+    {
+        int pct = lv_res_percent_values[lv_res_percent_index];
+        desired_yres = (max_yres * pct / 100) & ~1;  /* must stay even */
+        desired_yres = MAX(desired_yres, 160);        /* sanity floor */
+    }
+
+    if (!desired_yres)
+    {
+        desired_yres = max_yres;
+    }
 
     if (desired_yres)
     {
@@ -1501,6 +1523,30 @@ static MENU_UPDATE_FUNC(target_yres_update)
     MENU_SET_RINFO("from %d", max_resolutions[crop_preset][get_video_mode_index()]);
 }
 
+static MENU_UPDATE_FUNC(lv_res_percent_update)
+{
+    int max_yres = max_resolutions[CROP_PRESET_MENU][get_video_mode_index()];
+
+    if (target_yres)
+    {
+        MENU_SET_WARNING(MENU_WARN_INFO, "Overridden by \"Target YRES\" (%d px).", target_yres);
+        return;
+    }
+
+    if (lv_res_percent_index == 0 || !max_yres)
+    {
+        MENU_SET_VALUE("100% (Full)");
+    }
+    else
+    {
+        int pct = lv_res_percent_values[lv_res_percent_index];
+        int px = (max_yres * pct / 100) & ~1;
+        px = MAX(px, 160);
+        MENU_SET_VALUE("%d%%", pct);
+        MENU_SET_RINFO("-> %d px", px);
+    }
+}
+
 static struct menu_entry crop_rec_menu[] =
 {
     {
@@ -1519,6 +1565,19 @@ static struct menu_entry crop_rec_menu[] =
                               "Full range: from 1/FPS to minimum exposure time allowed by hardware."
             },
             {
+                .name       = "LiveView Resolution",
+                .priv       = &lv_res_percent_index,
+                .update     = lv_res_percent_update,
+                .max        = COUNT(lv_res_percent_values) - 1,
+                .choices    = CHOICES("100% (Full)", "75%", "50%", "25%"),
+                .icon_type  = IT_PERCENT,
+                .help       = "Downscale sensor readout (%) to ease CPU/DIGIC load.",
+                .help2      = "Lower values read fewer lines from the sensor: lighter\n"
+                              "processing, smoother LiveView and more headroom for high\n"
+                              "FPS / high resolution recording. Turn the dial to pick a\n"
+                              "value. Overridden by \"Target YRES\" below, if set.",
+            },
+            {
                 .name   = "Target YRES",
                 .priv   = &target_yres,
                 .update = target_yres_update,
@@ -1526,6 +1585,7 @@ static struct menu_entry crop_rec_menu[] =
                 .unit   = UNIT_DEC,
                 .help   = "Desired vertical resolution (only for presets with higher resolution).",
                 .help2  = "Decrease if you get corrupted frames (dial the desired resolution here).",
+                .advanced = 1,
             },
             {
                 .name   = "Delta ADTG 0",
@@ -2038,6 +2098,7 @@ MODULE_INFO_END()
 MODULE_CONFIGS_START()
     MODULE_CONFIG(crop_preset_index)
     MODULE_CONFIG(shutter_range)
+    MODULE_CONFIG(lv_res_percent_index)
 MODULE_CONFIGS_END()
 
 MODULE_CBRS_START()

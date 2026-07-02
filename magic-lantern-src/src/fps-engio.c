@@ -152,7 +152,13 @@ static int fps_values_x1000[] = {
     // restrict max fps to 35 for 1100D, 5D2, 50D, 500D (others?)
     #if !defined(CONFIG_1100D) && !defined(CONFIG_5D2) && !defined(CONFIG_50D) && !defined(CONFIG_500D)
     36000, 37000, 38000, 39000, 40000, 41000, 42000, 43000, 44000, 45000, 46000, 47000, 48000,
-    50000, 55000, 59940, 60000, 61000, 62000, 63000, 64000, 65000, 70000
+    50000, 55000, 59940, 60000, 61000, 62000, 63000, 64000, 65000, 70000,
+    // extra high-FPS presets (2026 update): mainly useful with crop_rec's
+    // reduced-resolution / binned modes, which shorten the frame period
+    // enough to make these achievable. In native (uncropped) 1080p/720p the
+    // hardware limits below (FPS_TIMER_B_MIN etc.) will clamp the actual
+    // frame rate to whatever is achievable, same as any other value here.
+    75000, 80000, 85000, 90000, 96000, 100000, 110000, 120000
     #endif
 };
 
@@ -1503,6 +1509,9 @@ static struct menu_entry fps_menu[] = {
                 .select = fps_change_value,
                 .icon_type = IT_PERCENT,
                 .help = "FPS value for recording. Video will play back at Canon FPS.",
+                .help2 = "Values above the sensor's real capability (varies with crop\n"
+                         "mode / resolution) are automatically clamped to the fastest\n"
+                         "frame rate the hardware can actually sustain.",
             },
             {
                 .name = "Optimize for",
