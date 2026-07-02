@@ -411,6 +411,10 @@ void menu_open_submenu();
 void menu_close_submenu();
 void menu_toggle_submenu();
 
+/* 2026 cinema UI: color-coded menu categories (toggle in Display > Cinema UI) */
+int menu_cine_colors_enabled(void);
+int* menu_cine_colors_var(void);
+
 int menu_get_value_from_script(const char* name, const char* entry_name);
 char* menu_get_str_value_from_script(const char* name, const char* entry_name, struct menu_display_info * info);
 int menu_set_value_from_script(const char* name, const char* entry_name, int value);

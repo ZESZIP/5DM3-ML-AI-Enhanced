@@ -151,6 +151,10 @@ static CONFIG_INT("raw.preview", preview_mode, 0);
 #define PREVIEW_ML     (preview_mode == 2)
 #define PREVIEW_HACKED (preview_mode == 3)
 
+/* preview-only LiveView scale (2026): does not change raw buffer / MLV resolution */
+static CONFIG_INT("raw.preview.lv_scale", preview_lv_scale_index, 0);
+static const int preview_lv_scale_values[] = {100, 75, 50, 25};
+
 static CONFIG_INT("raw.warm.up", warm_up, 0);
 static CONFIG_INT("raw.use.srm.memory", use_srm_memory, 1);
 static CONFIG_INT("raw.small.hacks", small_hacks, 1);
@@ -367,6 +371,8 @@ static GUARDED_BY(RawRecTask)   uint64_t mlv_start_timestamp = 0;
        GUARDED_BY(RawRecTask)   uint32_t raw_rec_trace_ctx = TRACE_ERROR;
 
 static int raw_rec_should_preview(void);
+static int preview_lv_quality(void);
+static int preview_lv_sleep_ms(int need_for_speed, int queued_frames);
 
 /* old mlv_rec interface stuff here */
 struct msg_queue *mlv_block_queue = NULL;
@@ -3928,6 +3934,18 @@ static struct menu_entry raw_video_menu[] =
                 .depends_on = DEP_GLOBAL_DRAW,
             },
             {
+                .name       = "Preview scale %",
+                .priv       = &preview_lv_scale_index,
+                .max        = COUNT(preview_lv_scale_values) - 1,
+                .choices    = CHOICES("100% (Full)", "75%", "50%", "25%"),
+                .icon_type  = IT_PERCENT,
+                .help       = "LiveView preview only - MLV records at full settings.",
+                .help2      = "Lowers DIGIC load while monitoring/recording: lighter\n"
+                              "preview path, same sensor readout and file resolution.\n"
+                              "Pair with Crop mode > Recording readout % to crop the sensor.",
+                .depends_on = DEP_GLOBAL_DRAW,
+            },
+            {
                 .name    = "Pre-record",
                 .priv    = &pre_record,
                 .max     = 10,
@@ -4189,6 +4207,28 @@ unsigned int raw_rec_keypress_cbr_raw(unsigned int raw_event)
 
 static int preview_dirty = 0;
 
+static int preview_lv_quality(void)
+{
+    int pct = preview_lv_scale_values[preview_lv_scale_index];
+    if (pct <= 50)
+        return RAW_PREVIEW_GRAY_ULTRA_FAST;
+    return RAW_PREVIEW_COLOR_HALFRES;
+}
+
+static int preview_lv_sleep_ms(int need_for_speed, int queued_frames)
+{
+    if (need_for_speed)
+    {
+        return (queued_frames > valid_slot_count / 2) ? 1000 : 500;
+    }
+
+    int pct = preview_lv_scale_values[preview_lv_scale_index];
+    if (pct <= 25) return 200;
+    if (pct <= 50) return 120;
+    if (pct <= 75) return 80;
+    return 50;
+}
+
 static int raw_rec_should_preview(void)
 {
     if (!raw_video_enabled) return 0;
@@ -4315,17 +4355,13 @@ unsigned int raw_rec_update_preview(unsigned int ctx)
         -1,
         (need_for_speed && !get_halfshutter_pressed())
             ? RAW_PREVIEW_GRAY_ULTRA_FAST
-            : RAW_PREVIEW_COLOR_HALFRES
+            : preview_lv_quality()
     );
 
     give_semaphore(settings_sem);
 
     /* be gentle with the CPU, save it for recording (especially if the buffer is almost full) */
-    msleep(
-        (need_for_speed)
-            ? ((queued_frames > valid_slot_count / 2) ? 1000 : 500)
-            : 50
-    );
+    msleep(preview_lv_sleep_ms(need_for_speed, queued_frames));
 
     preview_dirty = 1;
     return 1;
@@ -4371,7 +4407,7 @@ static unsigned int raw_rec_init()
     int version = get_digic_version();
     if (version > 5)
     { // hide features unsupported on modern cams
-        raw_video_menu->children[10].shidden = 1; // Hide "Small hacks"
+        raw_video_menu->children[11].shidden = 1; // Hide "Small hacks"
         small_hacks = 0;
     }
     if (version != 5)
@@ -4447,6 +4483,7 @@ MODULE_CONFIGS_START()
     MODULE_CONFIG(rec_trigger)
     MODULE_CONFIG(dolly_mode)
     MODULE_CONFIG(preview_mode)
+    MODULE_CONFIG(preview_lv_scale_index)
     MODULE_CONFIG(use_srm_memory)
     MODULE_CONFIG(small_hacks)
     MODULE_CONFIG(warm_up)

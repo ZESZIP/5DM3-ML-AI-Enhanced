@@ -28,10 +28,10 @@ static int is_basic = 0;
 static CONFIG_INT("crop.preset", crop_preset_index, 0);
 static CONFIG_INT("crop.shutter_range", shutter_range, 0);
 
-/* quick percentage-based LiveView/recording resolution control (2026 update)
- * this eases the sensor readout / DIGIC processing load by requesting fewer
- * vertical lines from the current crop mode preset, in percent, instead of
- * having to dial in an absolute pixel count via "Target YRES" */
+/* percentage-based sensor readout limit for recording (2026 update)
+ * requests fewer vertical lines from the current crop mode preset, easing
+ * DIGIC load and bandwidth; does NOT affect LiveView preview-only scaling
+ * (see mlv_lite "Preview scale %") */
 static CONFIG_INT("crop.lv_res_pct", lv_res_percent_index, 0);
 static const int lv_res_percent_values[] = {100, 75, 50, 25};
 
@@ -1565,17 +1565,18 @@ static struct menu_entry crop_rec_menu[] =
                               "Full range: from 1/FPS to minimum exposure time allowed by hardware."
             },
             {
-                .name       = "LiveView Resolution",
+                .name       = "Recording readout %",
                 .priv       = &lv_res_percent_index,
                 .update     = lv_res_percent_update,
                 .max        = COUNT(lv_res_percent_values) - 1,
                 .choices    = CHOICES("100% (Full)", "75%", "50%", "25%"),
                 .icon_type  = IT_PERCENT,
-                .help       = "Downscale sensor readout (%) to ease CPU/DIGIC load.",
-                .help2      = "Lower values read fewer lines from the sensor: lighter\n"
-                              "processing, smoother LiveView and more headroom for high\n"
-                              "FPS / high resolution recording. Turn the dial to pick a\n"
-                              "value. Overridden by \"Target YRES\" below, if set.",
+                .help       = "Limit sensor crop/readout (%) for recording.",
+                .help2      = "Crops how many lines the sensor reads: less data to\n"
+                              "compress/write, more headroom for high FPS / resolution.\n"
+                              "This affects the MLV file, not just the preview.\n"
+                              "For a lighter LiveView only, use Movie > mlv_lite >\n"
+                              "\"Preview scale %\". Overridden by \"Target YRES\" below.",
             },
             {
                 .name   = "Target YRES",
