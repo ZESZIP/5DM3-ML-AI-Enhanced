@@ -3526,7 +3526,8 @@ void raw_video_rec_task()
             int overflow_time = free_slots * 1000 * 10 / fps;
             /* better underestimate write speed a little */
             int avg_frame_size = group_size / num_frames;
-            int frame_limit = overflow_time * 1024 / 10 * (measured_write_speed * 85 / 1000) * 1024 / avg_frame_size / 10;
+            int margin_pct = get_config_var("cinema.write.engine") ? 92 : 85;
+            int frame_limit = overflow_time * 1024 / 10 * (measured_write_speed * margin_pct / 1000) * 1024 / avg_frame_size / 10;
             if (frame_limit >= 0 && frame_limit < num_frames)
             {
                 //printf("will overflow in %d.%d seconds; writing %d/%d frames\n", overflow_time/10, overflow_time%10, frame_limit, num_frames);

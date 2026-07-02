@@ -14,6 +14,7 @@
 #include "picstyle.h"
 #include "menuhelp.h"
 #include "cinema_governor.h"
+#include "cinema_write_engine.h"
 #include "gui.h"
 
 static CONFIG_INT("cinema.os", cinema_os, 1);
@@ -23,7 +24,7 @@ static int cine_row_sel = 0;
 static int cine_row_scroll = 0;
 
 static const char * page_labels[CINE_PAGE_COUNT] = {
-    "SETTINGS", "PHOTO", "CINEMATIC", "ADD-ONS", "HACKS"
+    "SETTINGS", "PHOTO", "CINE", "ADD-ONS", "HACKS"
 };
 
 static const int page_icons[CINE_PAGE_COUNT] = {
@@ -112,7 +113,7 @@ int cinema_os_page_menu_icon(cinema_os_page_t page)
 }
 
 int cinema_os_tab_bar_height(void) { return CINE_NAV_H; }
-int cinema_os_entry_row_height(void) { return 40; }
+int cinema_os_entry_row_height(void) { return 52; }
 
 int cinema_os_uses_cinematic_canvas(void)
 {
@@ -215,9 +216,9 @@ static void cine_row_value(int row, char * buf, int len)
 
 static void cine_draw_box_icon(int x, int y, const char * abbr)
 {
-    bmp_fill(COLOR_TRANSPARENT_BLACK, x, y, 40, 28);
-    bmp_draw_rect(COLOR_WHITE, x, y, 40, 28);
-    bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, NO_BG_ERASE), x + 4, y + 8, "%s", abbr);
+    bmp_fill(COLOR_TRANSPARENT_BLACK, x, y, 48, 34);
+    bmp_draw_rect(COLOR_WHITE, x, y, 48, 34);
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, NO_BG_ERASE), x + 6, y + 8, "%s", abbr);
 }
 
 static void cine_draw_chevron(int x, int y)
@@ -241,7 +242,7 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 static void cine_draw_selection_pill(int x, int y, int w, int h)
 {
     bmp_fill(COLOR_WHITE, x, y, w, h);
-    bmp_fill(COLOR_GRAY(55), x + 2, y + 2, w - 4, h - 4);
+    bmp_fill(COLOR_GRAY(50), x + 3, y + 3, w - 6, h - 6);
     bmp_draw_rect(COLOR_WHITE, x, y, w, h);
     bmp_draw_rect(COLOR_GRAY(70), x + 1, y + 1, w - 2, h - 2);
 }
@@ -264,14 +265,13 @@ void cinema_os_draw_nav_bar(int y)
         int fg = sel ? color : COLOR_GRAY(55);
         int icon = page_icons[i];
 
-        bfnt_draw_char(icon, x + 8, y + 4, fg, NO_BG_ERASE);
+        bfnt_draw_char(icon, x + 10, y + 6, fg, NO_BG_ERASE);
 
-        int lfnt = FONT(FONT_MED, fg, COLOR_BLACK);
-        int lw = bmp_string_width(lfnt, page_labels[i]);
-        int lx = x + 36;
-        if (lx + lw > x + tile_w - 4)
-            lfnt = FONT(FONT_SMALL, fg, COLOR_BLACK);
-        bmp_printf(lfnt, lx, y + bar_h - font_med.height - 6, "%s", page_labels[i]);
+        int lfnt = FONT(FONT_LARGE, fg, COLOR_BLACK);
+        int lx = x + 42;
+        if (lx + bmp_string_width(lfnt, page_labels[i]) > x + tile_w - 4)
+            lfnt = FONT(FONT_MED, fg, COLOR_BLACK);
+        bmp_printf(lfnt, lx, y + bar_h - font_large.height - 8, "%s", page_labels[i]);
 
         if (sel)
         {
@@ -289,9 +289,9 @@ void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
     if (page == CINE_PAGE_CINEMATIC)
     {
         bmp_fill(c, 0, y0, 720, h);
-        bmp_printf(FONT(FONT_MED, COLOR_WHITE, c),
-            16, y0 + 6,
-            "CINEMATIC MODE | RECORD SENSING / SETTINGS");
+        bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, c),
+            16, y0 + 8,
+            "CINE MODE | RECORD SENSING / SETTINGS");
     }
     else
     {
@@ -329,30 +329,37 @@ int cinema_os_draw_cinematic_page(int list_y)
         int sel = (row == cine_row_sel);
 
         if (sel)
-            cine_draw_selection_pill(8, y - 2, 704, CINE_ROW_H - 4);
+            cine_draw_selection_pill(8, y - 4, 704, CINE_ROW_H - 2);
 
         int fg = COLOR_WHITE;
-        int row_bg = sel ? COLOR_GRAY(55) : bg;
+        int row_bg = sel ? COLOR_GRAY(50) : bg;
 
-        cine_draw_box_icon(16, y + 6, row_abbr[row]);
+        cine_draw_box_icon(18, y + 8, row_abbr[row]);
 
         char val[64];
         cine_row_value(row, val, sizeof(val));
 
         char line[96];
         snprintf(line, sizeof(line), "%s | %s", row_titles[row], val);
-        bmp_printf(FONT(FONT_MED, fg, row_bg), 64, y + 12, "%s", line);
+        bmp_printf(FONT(FONT_LARGE, fg, row_bg), 76, y + 14, "%s", line);
 
-        cine_draw_chevron(680, y + 10);
+        cine_draw_chevron(686, y + 16);
     }
 
     cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll);
 
+    int foot_y = 432;
+    bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), 12, foot_y + 6,
+        "%s  |  PROFILE: %s",
+        cinema_write_speed_label(),
+        cinema_write_profile_label());
+
     if (cinema_governor_fallback_active())
-    {
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, bg), 16, 430,
+        bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 12, foot_y + 26,
             "GOVERNOR: adaptive format active");
-    }
+    else if (cinema_write_engine_ready())
+        bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 520, foot_y + 6, "ARMED");
 
     return 1;
 }

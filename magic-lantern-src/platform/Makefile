@@ -324,6 +324,7 @@ ML_SRC_OBJS_00 = \
     menu.o \
     cinema_os.o \
     cinema_governor.o \
+    cinema_write_engine.o \
     debug.o \
     rand.o \
     posix.o \

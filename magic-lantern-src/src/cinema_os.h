@@ -12,10 +12,10 @@
 #define CINE_COLOR_ADDONS    COLOR_LIGHT_BLUE   /* #00A2FF */
 #define CINE_COLOR_HACKS     COLOR_MAGENTA      /* #A55EEA */
 
-#define CINE_NAV_H           48
-#define CINE_SUBHEADER_H     32
-#define CINE_ROW_H           44
-#define CINE_VISIBLE_ROWS    7
+#define CINE_NAV_H           56
+#define CINE_SUBHEADER_H     40
+#define CINE_ROW_H           56
+#define CINE_VISIBLE_ROWS    6
 
 typedef enum {
     CINE_PAGE_SETTINGS = 0,

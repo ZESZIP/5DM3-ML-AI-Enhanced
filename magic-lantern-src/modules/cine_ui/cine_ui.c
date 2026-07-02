@@ -12,6 +12,7 @@
 #include <ml-cbr.h>
 
 extern int* cinema_os_enabled_var(void);
+extern int cinema_write_speed_centi_mbs(void);
 
 extern int ml_started;
 extern void cine_record_init(void);
@@ -132,6 +133,21 @@ static struct menu_entry cine_ui_menu[] =
     },
 };
 
+static LVINFO_UPDATE_FUNC(cine_cf_update)
+{
+    LVINFO_BUFFER(16);
+    if (!cinema_dashboard) { item->width = 0; return; }
+    if (!lv) { item->width = 0; return; }
+
+    int s = cinema_write_speed_centi_mbs();
+    if (s <= 0) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "%d.%dMB", s / 100, (s % 100) / 10);
+    item->color_fg = COLOR_YELLOW;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 5;
+}
+
 static LVINFO_UPDATE_FUNC(cine_brand_update)
 {
     LVINFO_BUFFER(16);
@@ -218,6 +234,13 @@ static LVINFO_UPDATE_FUNC(cine_rec_update)
 static struct lvinfo_item cine_lv_items[] =
 {
     {
+        .name = "Cine CF speed",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_cf_update,
+        .preferred_position = -10,
+        .priority = 5,
+    },
+    {
         .name = "AI Cinema brand",
         .which_bar = LV_PREFER_TOP_BAR,
         .update = cine_brand_update,
@@ -273,10 +296,10 @@ static unsigned int cine_boot_notify_cbr(unsigned int unused)
     NotifyBox(10000,
         "CINEMA OS 2026\n"
         "\n"
-        "Delete = orange menu shell\n"
-        "CINE tab > Cinema Record\n"
+        "Delete = CINE page (chunky UI)\n"
+        "Write engine arms hacks + CF test\n"
         "\n"
-        "POWER MODE: BEAST 4K25 / 1080p120"
+        "Ready to record MLV"
     );
     return 1;
 }

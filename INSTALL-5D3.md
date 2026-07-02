@@ -46,11 +46,15 @@ Five operational pages on a black nav bar (wheel left/right to switch):
 |-----|-------|---------|
 | SETTINGS | Yellow | Prefs |
 | PHOTO | Green | Shoot |
-| **CINEMATIC** | **Orange** | Recording sensing / settings list |
+| **CINE** | **Orange** | Recording sensing / settings list |
 | ADD-ONS | Blue | Modules |
 | HACKS | Purple | Debug |
 
-**CINEMATIC page** — full orange canvas, 9 scrollable rows (resolution, FPS, format, gamma, shutter, aperture, ISO, WB, audio). SET opens the linked ML control. **CODEC/FORMAT** shows live MLV depth; adapts automatically under card pressure via the buffer governor.
+**CINE page** — full orange canvas, chunky 56px rows, 9 scrollable settings. Footer shows live **CF MB/s** and auto **PROFILE**. SET opens linked ML control.
+
+### Write engine (boot)
+
+On boot (~10s): arms all cinema hacks (never power off, small hacks, SRM memory, ML preview, card test, governor), runs a **quiet CF benchmark**, and auto-applies the best MLV profile for your card speed. Re-probes every 90s in LiveView. LiveView bar shows CF speed tag.
 
 Toggle shell: `Display → Cinema UI → Cinema OS shell` (ON by default).
 

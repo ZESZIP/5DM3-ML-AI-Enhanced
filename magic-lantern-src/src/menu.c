@@ -4176,8 +4176,8 @@ void menus_display(
 
     int list_y_base = y + (cinema_os_enabled() && !junkie_mode
         ? (cinema_os_uses_cinematic_canvas() && !submenu_level
-            ? cinema_os_tab_bar_height() + 32
-            : cinema_os_tab_bar_height() + 30)
+            ? cinema_os_tab_bar_height() + 40
+            : cinema_os_tab_bar_height() + 34)
         : 55);
     
     for( ; menu ; menu = menu->next )
