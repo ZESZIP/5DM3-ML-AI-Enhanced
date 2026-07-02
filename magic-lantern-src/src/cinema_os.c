@@ -136,8 +136,8 @@ void cinema_os_draw_status_footer(void)
     int foot_y = 432;
     int page_c = cinema_os_page_color(cinema_os_active_page());
     cine_ui_draw_hd_panel(0, foot_y, 720, 48, page_c);
-    bmp_printf(FONT(FONT_MED, page_c, COLOR_GRAY(14)), 16, foot_y + 6, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_GRAY(14)), 16, foot_y + 26,
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, page_c), 16, foot_y + 6, "CINE AI ENHANCED");
+    bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
         "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
 
     if (cinema_os_uses_cinematic_canvas())
@@ -233,11 +233,11 @@ static void cine_row_value(int row, char * buf, int len)
 
 /* ---- drawing primitives ---- */
 
-static void cine_draw_box_icon(int x, int y, int icon)
+static void cine_draw_box_icon(int x, int y, int icon, int accent)
 {
-    bmp_fill(COLOR_GRAY(20), x, y, 48, 40);
+    bmp_fill(accent, x, y, 48, 40);
     bmp_draw_rect(COLOR_WHITE, x, y, 48, 40);
-    bfnt_draw_char(icon, x + 8, y + 4, COLOR_WHITE, COLOR_GRAY(20));
+    bfnt_draw_char(icon, x + 8, y + 4, COLOR_WHITE, accent);
 }
 
 static void cine_draw_chevron(int x, int y)
@@ -245,7 +245,7 @@ static void cine_draw_chevron(int x, int y)
     bmp_printf(FONT(FONT_MED, COLOR_WHITE, NO_BG_ERASE), x, y, ">");
 }
 
-static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scroll)
+static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scroll, int accent)
 {
     if (total <= visible) return;
     int track_x = 708;
@@ -254,8 +254,8 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
     int max_scroll = total - visible;
     int thumb_y = y0 + 4 + (track_h - thumb_h) * scroll / MAX(1, max_scroll);
 
-    bmp_fill(COLOR_WHITE, track_x, y0 + 4, 4, track_h);
-    bmp_fill(COLOR_GRAY(35), track_x, thumb_y, 4, thumb_h);
+    bmp_fill(accent, track_x, y0 + 4, 4, track_h);
+    bmp_fill(COLOR_WHITE, track_x, thumb_y, 4, thumb_h);
 }
 
 /* ---- global nav bar ---- */
@@ -263,8 +263,9 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 void cinema_os_draw_nav_bar(int y)
 {
     int bar_h = CINE_NAV_H;
-    bmp_fill(COLOR_GRAY(4), 0, y, 720, bar_h);
-    bmp_fill(COLOR_GRAY(8), 0, y + bar_h - 2, 720, 2);
+    int active_c = cinema_os_page_color(cinema_os_active_page());
+    bmp_fill(COLOR_BLACK, 0, y, 720, bar_h);
+    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
 
     int tile_w = 720 / CINE_PAGE_COUNT;
     cinema_os_page_t active = cinema_os_active_page();
@@ -285,14 +286,14 @@ void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
     if (page == CINE_PAGE_CINEMATIC)
     {
         cine_ui_draw_hd_page_bg(c, y0, h);
-        bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, COLOR_GRAY(14)),
+        bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, c),
             28, y0 + 22,
             "CINE MODE | RECORD SENSING / SETTINGS");
     }
     else
     {
         cine_ui_draw_hd_page_bg(c, y0, h);
-        bmp_printf(FONT(FONT_MED, c, COLOR_GRAY(14)), 28, y0 + 22, "%s", page_labels[page]);
+        bmp_printf(FONT(FONT_MED, COLOR_WHITE, c), 28, y0 + 22, "%s", page_labels[page]);
     }
 }
 
@@ -323,24 +324,24 @@ int cinema_os_draw_cinematic_page(int list_y)
         int y = row_y0 + v * CINE_ROW_H;
         int sel = (row == cine_row_sel);
 
-        cine_ui_draw_row_card(10, y - 4, 700, CINE_ROW_H - 2, CINE_COLOR_CINEMA, sel);
+        cine_ui_draw_row_card(10, y - 4, 700, CINE_ROW_H - 2, bg, sel);
 
         int fg = COLOR_WHITE;
-        int row_bg = sel ? COLOR_GRAY(42) : CINE_COLOR_CINEMA;
+        int row_bg = sel ? COLOR_BLACK : bg;
 
-        cine_draw_box_icon(20, y + 6, row_icons[row]);
+        cine_draw_box_icon(20, y + 6, row_icons[row], bg);
 
         char val[64];
         cine_row_value(row, val, sizeof(val));
 
         bmp_printf(FONT(FONT_LARGE, fg, row_bg), 80, y + 10, "%s", row_titles[row]);
-        bmp_printf(FONT(FONT_MED, sel ? CINE_COLOR_CINEMA : COLOR_GRAY(55), row_bg),
+        bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
             80, y + 32, "%s", val);
 
         cine_draw_chevron(686, y + 16);
     }
 
-    cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll);
+    cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll, bg);
 
     if (cinema_panel_is_open())
         cinema_panel_draw(row_y0, body_h);
@@ -437,14 +438,14 @@ void cinema_os_get_entry_colors(
     if (page == CINE_PAGE_CINEMATIC || (tab && tab->icon == ICON_ML_MOVIE))
     {
         if (sel) { *bg = COLOR_WHITE; *fg = CINE_COLOR_CINEMA; }
-        else if (warn) { *bg = 45; *fg = COLOR_GRAY(45); }
+        else if (warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
         else { *bg = CINE_COLOR_CINEMA; *fg = COLOR_WHITE; }
     }
     else
     {
         if (sel) { *bg = tab_c; *fg = COLOR_WHITE; }
-        else if (warn) { *bg = 45; *fg = COLOR_GRAY(45); }
-        else { *bg = COLOR_GRAY(14); *fg = tab_c; }
+        else if (warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
+        else { *bg = COLOR_BLACK; *fg = tab_c; }
     }
 
     (void) selected_row;

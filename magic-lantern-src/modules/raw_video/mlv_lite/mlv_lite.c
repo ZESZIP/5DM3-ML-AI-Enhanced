@@ -79,12 +79,20 @@
 #include "../../silent/lossless.h"
 #include "ml-cbr.h"
 
-/* CINEPACK hooks live in main binary; weak stubs keep module loadable */
+/* CINEPACK / CIX stream hooks live in main binary */
 extern WEAK_FUNC(ret_0) int cine_codec_enabled(void);
+extern WEAK_FUNC(ret_0) int cine_codec_stream_mode(void);
 extern WEAK_FUNC(ret_0) int cine_codec_quality(void);
+extern WEAK_FUNC(ret_0) int cine_codec_max_frame_bytes(void);
+extern WEAK_FUNC(ret_0) int cine_codec_last_ratio_pct(void);
 extern WEAK_FUNC(ret_0) int cinepack_compress(
     void * dst, int dst_max, const void * src, int src_bytes,
     int width, int height, int quality_pct);
+extern WEAK_FUNC(ret_0) int cine_stream_begin_file(void * file, int w, int h, int fps_x1000, int bpp);
+extern WEAK_FUNC(ret_0) int cine_stream_write_frame(const void * payload, int size, int frame_num);
+extern WEAK_FUNC(ret_0) void cine_stream_end(void);
+extern WEAK_FUNC(ret_0) int cine_stream_frame_count(void);
+extern WEAK_FUNC(ret_0) int64_t cine_stream_bytes_written(void);
 
 THREAD_ROLE(RawRecTask);            /* our raw recording task */
 THREAD_ROLE(ShootTask);             /* polling CBR */
@@ -723,12 +731,13 @@ void update_resolution_params()
 
     if (OUTPUT_COMPRESSION)
     {
-        /* assume the compressed output will not exceed uncompressed frame size */
-        /* max frame size for the lossless routine also has unusual alignment requirements */
-        if (max_frame_size > 10*1024*1024)
+        if (cine_codec_enabled() && cine_codec_max_frame_bytes() > 0)
         {
-            /* at very high resolutions, restricting compressed frame size to 85%
-             * (relative to uncompressed size) will help allocating more buffers */
+            int cap = VIDF_HDR_SIZE + cine_codec_max_frame_bytes() + 4;
+            max_frame_size = (cap + 511) & ~511;
+        }
+        else if (max_frame_size > 10*1024*1024)
+        {
             max_frame_size = (max_frame_size / 100 * 85) & ~4095;
         }
         else
@@ -2745,7 +2754,19 @@ static void compress_task()
                 res_x, res_y, cine_codec_quality());
 
             if (compressed_size > 0 && !RAW_IS_IDLE)
-                shrink_slot(slot_index, MIN(compressed_size, max_frame_size - VIDF_HDR_SIZE - 4));
+            {
+                if (cine_codec_stream_mode())
+                {
+                    cine_stream_write_frame(out_ptr, compressed_size,
+                        slots[slot_index].frame_number - 1);
+                    measured_compression_ratio = cine_codec_last_ratio_pct();
+                    slots[slot_index].status = SLOT_FREE;
+                }
+                else
+                {
+                    shrink_slot(slot_index, MIN(compressed_size, max_frame_size - VIDF_HDR_SIZE - 4));
+                }
+            }
         }
         else if (OUTPUT_COMPRESSION)
         {
@@ -2882,10 +2903,11 @@ void process_frame(int next_fullsize_buffer_pos)
         }
         else
         {
-            /* send it for saving, even if it isn't done yet */
-            /* (the recording thread will wait until it's done) */
-            writing_queue[writing_queue_tail] = capture_slot;
-            INC_MOD(writing_queue_tail, COUNT(writing_queue));
+            if (!cine_codec_stream_mode())
+            {
+                writing_queue[writing_queue_tail] = capture_slot;
+                INC_MOD(writing_queue_tail, COUNT(writing_queue));
+            }
         }
     }
     else
@@ -2988,7 +3010,7 @@ static char* get_next_raw_movie_file_name()
              * Try to match Canon movie file names
              * Use the file number from the H.264 card; increment if there are duplicates
              */
-            snprintf(filename, sizeof(filename), "%s/%s%04d.MLV", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000));
+            snprintf(filename, sizeof(filename), "%s/%s%04d.%s", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000), cine_codec_stream_mode() ? "CIX" : "MLV");
         }
         else
         {
@@ -2996,7 +3018,7 @@ static char* get_next_raw_movie_file_name()
              * Get unique file names from the current date/time
              * last field gets incremented if there's another video with the same name
              */
-            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.MLV", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99));
+            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.%s", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99), cine_codec_stream_mode() ? "CIX" : "MLV");
         }
         
         /* already existing file? */
@@ -3399,12 +3421,25 @@ void raw_video_rec_task()
     /* Need to start the recording of audio before the init of the mlv chunk */
     mlv_rec_call_cbr(MLV_REC_EVENT_STARTING, NULL);
 
-    init_mlv_chunk_headers(&raw_info);
-    written_total = written_chunk = write_mlv_chunk_headers(f, mlv_chunk);
-    if (!written_chunk)
+    if (cine_codec_stream_mode())
     {
-        NotifyBox(5000, "Card Full");
-        goto cleanup;
+        int fps = fps_get_current_x1000();
+        if (!cine_stream_begin_file(f, res_x, res_y, fps, BPP))
+        {
+            NotifyBox(5000, "CIX stream error");
+            goto cleanup;
+        }
+        written_total = written_chunk = 0;
+    }
+    else
+    {
+        init_mlv_chunk_headers(&raw_info);
+        written_total = written_chunk = write_mlv_chunk_headers(f, mlv_chunk);
+        if (!written_chunk)
+        {
+            NotifyBox(5000, "Card Full");
+            goto cleanup;
+        }
     }
     
     hack_liveview(0);
@@ -3803,7 +3838,7 @@ abort_and_check_early_stop:
         free_slot(slot_index);
     }
 
-    if (!written_total || !f)
+    if (!written_total && !cine_codec_stream_mode())
     {
         bmp_printf( FONT_MED, 30, 110, 
             "Nothing saved, card full maybe."
@@ -3811,10 +3846,32 @@ abort_and_check_early_stop:
         beep_times(3);
         msleep(2000);
     }
+    else if (cine_codec_stream_mode() && !cine_stream_frame_count())
+    {
+        bmp_printf( FONT_MED, 30, 110, 
+            "CIX stream empty — card full maybe."
+        );
+        beep_times(3);
+        msleep(2000);
+    }
 
 cleanup:
-    if (f) finish_chunk(f);
-    if (!written_total)
+    if (cine_codec_stream_mode())
+    {
+        cine_stream_end();
+        if (f) FIO_CloseFile(f);
+    }
+    else if (f)
+    {
+        finish_chunk(f);
+    }
+
+    if (!written_total && !cine_codec_stream_mode())
+    {
+        FIO_RemoveFile(raw_movie_filename);
+        raw_movie_filename = 0;
+    }
+    else if (cine_codec_stream_mode() && !cine_stream_frame_count() && raw_movie_filename)
     {
         FIO_RemoveFile(raw_movie_filename);
         raw_movie_filename = 0;

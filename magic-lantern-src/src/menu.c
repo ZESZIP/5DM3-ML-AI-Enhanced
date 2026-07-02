@@ -2976,7 +2976,7 @@ skip_name:
 
     int y_icon_offset = (h - 32) / 2 - 1;
 
-    if (entry->icon_type == IT_SUBMENU )
+    if (!cinema_os_enabled() && entry->icon_type == IT_SUBMENU )
     {
         // Forward sign for submenus that open with SET
         submenu_key_hint(
@@ -2986,7 +2986,7 @@ skip_name:
             ICON_ML_FORWARD
         );
     }
-    else if (entry->children && !SUBMENU_OR_EDIT && !menu_lv_transparent_mode)
+    else if (!cinema_os_enabled() && entry->children && !SUBMENU_OR_EDIT && !menu_lv_transparent_mode)
     {
         // Q sign for selected item, if submenu opens with Q
         // Discrete placeholder for non-selected item
@@ -3107,7 +3107,8 @@ skip_name:
     }
 
     // if there's a warning message set, display it
-    if (entry->selected && info->warning[0])
+    if (entry->selected && info->warning[0]
+        && !(cinema_os_enabled() && (submenu_level || in_submenu)))
     {
         int warn_color = 
             info->warning_level == MENU_WARN_INFO ? COLOR_GREEN1 : 
@@ -4054,6 +4055,8 @@ menu_display_junkie(
 static void
 show_hidden_items(struct menu * menu, int force_clear)
 {
+    if (cinema_os_enabled() && !junkie_mode)
+        return;
     // show any items that may be hidden
     if (!menu_lv_transparent_mode)
     {
@@ -4337,7 +4340,7 @@ void menus_display(
     if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
         cinema_os_draw_status_footer();
 
-    if (cinema_os_enabled() && !junkie_mode)
+    if (cinema_os_enabled() && !junkie_mode && !submenu_level)
         cine_debug_draw_overlay();
 
     if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
@@ -5333,7 +5336,7 @@ handle_ml_menu_keys(struct event * event)
     if (handle_rack_focus_menu_overrides(event)==0)
         return 0;
 
-    if (beta_should_warn())
+    if (beta_should_warn() && !cinema_os_enabled())
     {
         if (event->param == BGMT_PRESS_SET ||
             event->param == BGMT_MENU ||
@@ -5635,6 +5638,8 @@ handle_ml_menu_keys(struct event * event)
         break;
 
     case BGMT_INFO:
+        if (cinema_os_enabled() && (submenu_level || edit_mode))
+            break;
         menu_help_active = !menu_help_active;
         menu_lv_transparent_mode = 0;
         if (menu_help_active)
