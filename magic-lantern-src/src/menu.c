@@ -2428,7 +2428,7 @@ static void submenu_key_hint(int x, int y, int fg, int bg, int chr)
 
 static void menu_clean_footer()
 {
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
         return;
     int h = 50;
     if (is_menu_active("Help")) h = font_med.height * 3 + 2;
@@ -2789,9 +2789,17 @@ entry_print(
             cinema_os_get_entry_colors(tab, entry, info, 0, &fg, &bg, &accent);
             fnt = FONT(FONT_LARGE, fg, bg);
             y_font_offset = (h - (int)font_large.height) / 2;
-            if (!entry->selected && tab->icon != ICON_ML_MOVIE)
+            if (!entry->selected)
                 bmp_fill(accent, x - 10, y + 4, 5, h - 8);
         }
+    }
+    else if (cinema_os_enabled() && in_submenu && !menu_lv_transparent_mode)
+    {
+        struct menu * tab = entry->parent_menu;
+        while (tab && tab->parent_menu) tab = tab->parent_menu;
+        int accent = cine_ui_menu_accent(tab);
+        if (!entry->selected)
+            bmp_fill(accent, x - 8 + x_font_offset, y + 4, 4, h - 8);
     }
     
     if (
@@ -2995,7 +3003,7 @@ skip_name:
         int color_left = 45;
         int color_right = menu_cine_colors ? menu_category_color_for_entry(entry) : MENU_BAR_COLOR;
         if (cinema_os_enabled())
-            color_right = cine_ui_menu_accent(entry->parent_menu);
+            color_right = cinema_os_page_color(cinema_os_active_page());
         if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
         if (customize_mode) { color_left = color_right = get_customize_color(); }
 
@@ -3019,7 +3027,8 @@ skip_name:
     }
 
     // display help
-    if (entry->selected && !menu_lv_transparent_mode)
+    if (entry->selected && !menu_lv_transparent_mode
+        && !(cinema_os_enabled() && (submenu_level || in_submenu)))
     {
         char help1_buf[MENU_MAX_HELP_LEN];
         char help2_buf[MENU_MAX_HELP_LEN];
@@ -3121,7 +3130,7 @@ skip_name:
 static void
 menu_post_display()
 {
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
         return;
 
     char* cfg_preset = get_config_preset_name();
@@ -3583,7 +3592,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (scroll_pos > 0 && !(cinema_os_enabled() && !junkie_mode && !submenu_level))
+    if (scroll_pos > 0 && !(cinema_os_enabled() && !junkie_mode))
     {
         for (int i = -13; i <= 13; i++)
             draw_line(360 - i, y + 8 - 12, 360, y - 12, MENU_BAR_COLOR);
@@ -3637,7 +3646,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (more_entries && !(cinema_os_enabled() && !junkie_mode && !submenu_level))
+    if (more_entries && !(cinema_os_enabled() && !junkie_mode))
     {
         y += 10;
         for (int i = -13; i <= 13; i++)
@@ -4381,7 +4390,6 @@ submenu_display(struct menu *submenu)
         if (cinema_os_enabled())
         {
             cine_ui_draw_submenu_frame(bx, by, w, h, header_accent, submenu->name);
-            submenu_key_hint(720 - bx - 45, by + 14, COLOR_WHITE, COLOR_GRAY(15), ICON_ML_Q_BACK);
         }
         else
         {

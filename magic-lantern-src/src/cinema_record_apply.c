@@ -8,20 +8,23 @@
 #include "fps.h"
 #include "beep.h"
 #include "gui.h"
+#include "property.h"
+#include "module.h"
 #include "cinema_record_apply.h"
 #include "cinema_write_engine.h"
+#include "cinema_module_bridge.h"
+#include "cine_codec.h"
 
 static CONFIG_INT("cine.rec.res", cine_res, 1);
-static CONFIG_INT("cine.rec.aspect", cine_aspect, 0);
-static CONFIG_INT("cine.rec.depth", cine_depth, 2);
 static CONFIG_INT("cine.rec.fps", cine_fps, 1);
 static CONFIG_INT("cine.rec.beast", cine_beast, 0);
-static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 5); /* MLV LJ92 12-bit default */
+static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 5);
 static CONFIG_INT("cinema.rec.container", cinema_rec_container, 1);
+static CONFIG_INT("cine.sensor.pct", cine_sensor_pct, 100);
+static CONFIG_INT("cine.lv.pct", cine_lv_pct, 50);
 
-static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K", "6K" };
+static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K UHD", "6K" };
 static const int    res_target_w[] = { 1280, 1920, 2704, 3840, 5760 };
-static const int    aspect_idx[]   = { 10, 10, 10, 10, 10 };
 static const char * fps_labels[]   = { "24", "25", "50", "60", "100", "120" };
 static const int    fps_idx[]      = { 33, 34, 60, 63, 75, 77 };
 
@@ -31,11 +34,11 @@ static const char * fmt_labels[] = {
     "MLV 12-bit",
     "MLV 10-bit",
     "MLV LJ92 14-bit",
-    "MLV LJ92 12-bit"
+    "MLV LJ92 12-bit",
+    "CINEPACK Pro (85%)"
 };
 
-/* maps fmt_idx -> raw.output_format (MOV ignores) */
-static const int fmt_output[] = { -1, 0, 1, 2, 3, 4 };
+static const int fmt_output[] = { -1, 0, 1, 2, 3, 4, 4 };
 
 static const int res_presets[] = {
     640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3072, 3520, 4096, 5796
@@ -60,19 +63,11 @@ static int crop_index(int res, int fps_sel)
     switch (res)
     {
         case 0:
-        case 1:
-            return (xfps || hfps) ? 3 : 0;
+        case 1: return (xfps || hfps) ? 3 : 0;
         case 2: return 5;
         case 3: return hfps ? 7 : 6;
         case 4: return 9;
     }
-    return 0;
-}
-
-static int readout_pct_index(int fps_sel)
-{
-    if (fps_sel >= 5) return 3;
-    if (fps_sel >= 4) return 2;
     return 0;
 }
 
@@ -96,8 +91,18 @@ void cinema_record_set_format_idx(int fmt_idx)
 {
     cine_fmt_idx = COERCE(fmt_idx, 0, COUNT(fmt_labels) - 1);
     cinema_rec_container = (cine_fmt_idx == 0) ? CINE_REC_MOV : CINE_REC_MLV;
-    if (cine_fmt_idx > 0)
-        cine_depth = COERCE(cine_fmt_idx - 1, 0, 4);
+}
+
+void cinema_record_set_sensor_pct(int pct)
+{
+    cine_sensor_pct = COERCE(pct, 25, 100);
+    cine_codec_set_sensor_pct(cine_sensor_pct);
+}
+
+void cinema_record_set_lv_pct(int pct)
+{
+    cine_lv_pct = COERCE(pct, 25, 100);
+    cine_codec_set_lv_pct(cine_lv_pct);
 }
 
 const char * cinema_record_container_label(void)
@@ -149,89 +154,108 @@ int cinema_record_apply_full(void)
         return 0;
     }
 
-    cine_res    = COERCE(cine_res, 0, COUNT(res_labels) - 1);
-    cine_fps    = COERCE(cine_fps, 0, COUNT(fps_labels) - 1);
+    cine_res     = COERCE(cine_res, 0, COUNT(res_labels) - 1);
+    cine_fps     = COERCE(cine_fps, 0, COUNT(fps_labels) - 1);
     cine_fmt_idx = COERCE(cine_fmt_idx, 0, COUNT(fmt_labels) - 1);
     cinema_rec_container = (cine_fmt_idx == 0) ? CINE_REC_MOV : CINE_REC_MLV;
 
+    int use_cinepack = (cine_fmt_idx == 6);
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
+
+    cine_codec_set_mode(use_cinepack, 85);
+    cine_codec_set_sensor_pct(cine_sensor_pct);
+    cine_codec_set_lv_pct(cine_lv_pct);
+    ro_pct = cine_codec_readout_pct_index();
+    preview_scale = cine_codec_lv_scale_index();
 
     if (cine_beast == 1)
     {
-        crop = 6; ro_pct = 0; res_x = 9; aspect = 10; fmt = 4; fps_i = 34;
-        preview_scale = 2;
-        cine_fmt_idx = 5;
+        crop = 6; res_x = 9; aspect = 10; fmt = 4; fps_i = 34;
+        cine_fmt_idx = use_cinepack ? 6 : 5;
         cinema_rec_container = CINE_REC_MLV;
     }
     else if (cine_beast == 2)
     {
         crop = 3; ro_pct = 2; res_x = 4; aspect = 10; fmt = 4; fps_i = 77;
         preview_scale = 3;
-        cine_fmt_idx = 5;
         cinema_rec_container = CINE_REC_MLV;
-        NotifyBox(3500, "High FPS: set Canon menu to 720p 50/60.");
+        NotifyBox(3500, "High FPS: Canon menu 720p 50/60.");
     }
     else
     {
         crop = crop_index(cine_res, cine_fps);
-        ro_pct = readout_pct_index(cine_fps);
         res_x = res_x_index(res_target_w[cine_res]);
-        aspect = aspect_idx[cine_res];
+        aspect = 10;
         fps_i = fps_idx[cine_fps];
-        preview_scale = (cine_fps >= 4) ? 3 : (cine_fps >= 2) ? 2 : 0;
-
         if (cinema_rec_container == CINE_REC_MLV)
         {
             int fi = COERCE(cine_fmt_idx, 1, COUNT(fmt_output) - 1);
             fmt = fmt_output[fi];
             if (fmt < 0) fmt = 4;
         }
-        else
-            fmt = 4;
+        else fmt = 4;
     }
 
-    /* Force MLV subsystem to re-init by toggling off first */
-    set_config_var("raw.video.enabled", 0);
-    msleep(250);
+    gui_uilock(UILOCK_EVERYTHING);
 
-    set_config_var("crop.preset", crop);
-    msleep(500);
-    set_config_var("crop.lv_res_pct", ro_pct);
-    set_config_var("raw.res_x_fine", 0);
-    set_config_var("raw.res_x", res_x);
-    set_config_var("raw.aspect.ratio", aspect);
+    if (!cinema_bridge_crop_apply(crop, ro_pct))
+    {
+        set_config_var("crop.preset", crop);
+        set_config_var("crop.lv_res_pct", ro_pct);
+        msleep(800);
+        if (!cinema_bridge_crop_apply(crop, ro_pct))
+            NotifyBox(3500, "Enable crop_rec module\nfor resolution changes.");
+    }
+
     set_config_var("fps.override", 1);
     set_config_var("fps.override.idx", fps_i);
     fps_request_update();
+    msleep(300);
 
     if (cinema_rec_container == CINE_REC_MLV)
     {
-        set_config_var("raw.h264.proxy", 0);
-        set_config_var("raw.output_format", fmt);
-        set_config_var("raw.preview.lv_scale", preview_scale);
-        set_config_var("raw.preview", 2);
-        set_config_var("raw.small.hacks", 1);
-        set_config_var("raw.use.srm.memory", 1);
-        set_config_var("raw.sync_beep", 1);
-        set_config_var("raw.video.enabled", 1);
-        msleep(600);
-        cinema_write_arm_hacks();
-        /* do not call apply_best_profile here — it would override user format/res */
+        if (!cinema_bridge_mlv_arm(1, res_x, aspect, fmt, preview_scale))
+        {
+            set_config_var("raw.video.enabled", 0);
+            msleep(200);
+            set_config_var("raw.res_x", res_x);
+            set_config_var("raw.res_x_fine", 0);
+            set_config_var("raw.aspect.ratio", aspect);
+            set_config_var("raw.output_format", fmt);
+            set_config_var("raw.preview.lv_scale", preview_scale);
+            set_config_var("raw.h264.proxy", 0);
+            set_config_var("raw.video.enabled", 1);
+            msleep(800);
+            if (!cinema_bridge_mlv_arm(1, res_x, aspect, fmt, preview_scale))
+                NotifyBox(4000, "Enable mlv_lite module\nfor MLV recording.");
+        }
 
-        NotifyBox(4000,
-            "MLV armed: %s\n%s @ %s\nPress REC to record MLV.",
+        cinema_write_arm_hacks();
+
+        if (!get_config_var("raw.video.enabled"))
+        {
+            gui_uilock(UILOCK_NONE);
+            NotifyBox(5000, "MLV arm FAILED.\nCheck mlv_lite module is ON.");
+            return 0;
+        }
+
+        NotifyBox(4500,
+            "%s armed\n%s @ %s\nSensor %d%%  LV %d%%\nPress REC for MLV.",
             fmt_labels[cine_fmt_idx],
             cinema_record_resolution_label(),
-            cinema_record_fps_label());
+            cinema_record_fps_label(),
+            cine_sensor_pct, cine_lv_pct);
         beep();
     }
     else
     {
+        cinema_bridge_mlv_arm(0, 0, 0, 0, 0);
         set_config_var("raw.video.enabled", 0);
-        set_config_var("raw.h264.proxy", 0);
+        cine_codec_set_mode(0, 85);
         NotifyBox(3000, "MOV mode.\nPress REC for Canon H.264.");
     }
 
+    gui_uilock(UILOCK_NONE);
     config_save();
     return 1;
 }

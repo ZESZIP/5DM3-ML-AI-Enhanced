@@ -2091,6 +2091,17 @@ static unsigned int crop_rec_deinit()
     return 0;
 }
 
+/* Cine AI bridge — apply crop preset and readout % immediately */
+unsigned int crop_rec_cine_apply(unsigned int preset_index, unsigned int lv_res_pct_idx)
+{
+    if (!lv) return 0;
+
+    crop_preset_index = COERCE((int) preset_index, 0, 9);
+    lv_res_percent_index = COERCE((int) lv_res_pct_idx, 0, COUNT(lv_res_percent_values) - 1);
+    update_patch();
+    return 1;
+}
+
 MODULE_INFO_START()
     MODULE_INIT(crop_rec_init)
     MODULE_DEINIT(crop_rec_deinit)
