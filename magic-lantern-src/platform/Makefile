@@ -327,6 +327,8 @@ ML_SRC_OBJS_00 = \
     cinema_os.o \
     cinema_panels.o \
     cinema_help.o \
+    cinema_record_apply.o \
+    cinema_ui_theme.o \
     cinema_governor.o \
     cinema_write_engine.o \
     cinema_boot.o \

@@ -49,9 +49,9 @@ Five operational pages on a black nav bar (wheel left/right to switch):
 | ADD-ONS | Blue | Modules |
 | HACKS | Purple | Debug |
 
-**CINE page** — full orange canvas, chunky 56px rows, 9 scrollable settings. Footer shows live **CF MB/s** and auto **PROFILE**. **SET opens thick in-window panels** (no help-file popups).
+**CINE page** — full orange canvas, chunky 56px rows with icons and shadows. Footer shows **MLV ARMED** or **MOV MODE**, CF speed, and profile.
 
-Help is built into Cine AI (`ML/doc/menuidx.dat` ships in the install zip). You should never see “help files not found”.
+**Recording:** Choose **RECORD FORMAT** → pick **MLV LJ92 12-bit** (recommended compression) or other MLV/MOV options → SET to arm. When footer shows **MLV ARMED**, press the camera **REC** button to record MLV (not Canon MOV). LJ92 files open in MLV App / `raw2dng` on PC — this is Canon lossless JPEG compression built into MLV, ~40–60% smaller than uncompressed 14-bit.
 
 ### Write engine (boot)
 
