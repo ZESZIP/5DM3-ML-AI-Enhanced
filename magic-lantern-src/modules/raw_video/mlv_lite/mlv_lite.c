@@ -75,26 +75,13 @@
 #include "../../../src/cinema_governor.h"
 #include "timer.h"
 #include "ml-cbr.h"
-#include "cine_codec.h"
+#include "mlv_cinepack.h"
 #include "../../silent/lossless.h"
-#include "ml-cbr.h"
 
-/* CINEPACK / CIX stream hooks live in main binary */
-extern WEAK_FUNC(ret_0) int cine_codec_enabled(void);
-extern WEAK_FUNC(ret_0) int cine_codec_stream_mode(void);
-extern WEAK_FUNC(ret_0) int cine_codec_quality(void);
-extern WEAK_FUNC(ret_0) int cine_codec_max_frame_bytes(void);
-extern WEAK_FUNC(ret_0) int cine_codec_last_ratio_pct(void);
-extern WEAK_FUNC(ret_0) int cinepack_compress(
-    void * dst, int dst_max, const void * src, int src_bytes,
-    int width, int height, int quality_pct);
-extern WEAK_FUNC(ret_0) int cine_stream_begin_file(void * file, int w, int h, int fps_x1000, int bpp);
-extern WEAK_FUNC(ret_0) int cine_stream_write_frame(const void * payload, int size, int frame_num);
-extern WEAK_FUNC(ret_0) void cine_stream_end(void);
-extern WEAK_FUNC(ret_0) int cine_stream_frame_count(void);
-extern WEAK_FUNC(ret_0) int64_t cine_stream_bytes_written(void);
+/* CINEPACK / CSP — self-contained in mlv_cinepack.c */
 
-THREAD_ROLE(RawRecTask);            /* our raw recording task */
+static struct semaphore * csp_write_sem = 0;
+static int csp_first_frame = 1;
 THREAD_ROLE(ShootTask);             /* polling CBR */
 
 static GUARDED_BY(GuiMainTask) int show_graph = 0;
@@ -731,9 +718,9 @@ void update_resolution_params()
 
     if (OUTPUT_COMPRESSION)
     {
-        if (cine_codec_enabled() && cine_codec_max_frame_bytes() > 0)
+        if (mlv_cinepack_active() && mlv_cinepack_max_frame_bytes() > 0)
         {
-            int cap = VIDF_HDR_SIZE + cine_codec_max_frame_bytes() + 4;
+            int cap = VIDF_HDR_SIZE + mlv_cinepack_max_frame_bytes() + 4;
             max_frame_size = (cap + 511) & ~511;
         }
         else if (max_frame_size > 10*1024*1024)
@@ -2746,21 +2733,28 @@ static void compress_task()
 
         int compressed_size = 0;
 
-        if (cine_codec_enabled())
+        if (mlv_cinepack_active())
         {
-            compressed_size = cinepack_compress(
+            compressed_size = mlv_cinepack_compress(
                 out_ptr, max_frame_size - VIDF_HDR_SIZE,
                 fullSizeBuffer, frame_size_uncompressed,
-                res_x, res_y, cine_codec_quality());
+                res_x, res_y, mlv_cinepack_quality());
 
             if (compressed_size > 0 && !RAW_IS_IDLE)
             {
-                if (cine_codec_stream_mode())
+                if (mlv_cinepack_stream_mode())
                 {
-                    cine_stream_write_frame(out_ptr, compressed_size,
-                        slots[slot_index].frame_number - 1);
-                    measured_compression_ratio = cine_codec_last_ratio_pct();
-                    slots[slot_index].status = SLOT_FREE;
+                    if (mlv_cinepack_write_frame(out_ptr, compressed_size,
+                        slots[slot_index].frame_number - 1))
+                    {
+                        if (frame_size_uncompressed > 0)
+                            measured_compression_ratio =
+                                compressed_size * 100 / frame_size_uncompressed;
+                        slots[slot_index].status = SLOT_FREE;
+                        if (csp_write_sem)
+                            give_semaphore(csp_write_sem, 0);
+                        continue;
+                    }
                 }
                 else
                 {
@@ -2873,6 +2867,9 @@ void process_frame(int next_fullsize_buffer_pos)
     
     pre_record_vsync_step();
     
+    if (mlv_cinepack_stream_mode() && csp_write_sem && !csp_first_frame)
+        take_semaphore(csp_write_sem, 0);
+
     /* where to save the next frame? */
     capture_slot = choose_next_capture_slot(capture_slot);
 
@@ -2903,7 +2900,7 @@ void process_frame(int next_fullsize_buffer_pos)
         }
         else
         {
-            if (!cine_codec_stream_mode())
+            if (!mlv_cinepack_stream_mode())
             {
                 writing_queue[writing_queue_tail] = capture_slot;
                 INC_MOD(writing_queue_tail, COUNT(writing_queue));
@@ -2933,6 +2930,9 @@ void process_frame(int next_fullsize_buffer_pos)
     /* let's delegate it to another task */
     ASSERT(compress_mq);
     msg_queue_post(compress_mq, capture_slot | (next_fullsize_buffer_pos << 16));
+
+    if (mlv_cinepack_stream_mode() && csp_first_frame)
+        csp_first_frame = 0;
 
     /* advance to next frame */
     frame_count++;
@@ -3010,7 +3010,7 @@ static char* get_next_raw_movie_file_name()
              * Try to match Canon movie file names
              * Use the file number from the H.264 card; increment if there are duplicates
              */
-            snprintf(filename, sizeof(filename), "%s/%s%04d.%s", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000), cine_codec_stream_mode() ? "CSP" : "MLV");
+            snprintf(filename, sizeof(filename), "%s/%s%04d.%s", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000), mlv_cinepack_stream_mode() ? "CSP" : "MLV");
         }
         else
         {
@@ -3018,7 +3018,7 @@ static char* get_next_raw_movie_file_name()
              * Get unique file names from the current date/time
              * last field gets incremented if there's another video with the same name
              */
-            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.%s", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99), cine_codec_stream_mode() ? "CSP" : "MLV");
+            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.%s", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99), mlv_cinepack_stream_mode() ? "CSP" : "MLV");
         }
         
         /* already existing file? */
@@ -3421,10 +3421,15 @@ void raw_video_rec_task()
     /* Need to start the recording of audio before the init of the mlv chunk */
     mlv_rec_call_cbr(MLV_REC_EVENT_STARTING, NULL);
 
-    if (cine_codec_stream_mode())
+    if (mlv_cinepack_stream_mode())
     {
+        if (!csp_write_sem)
+            csp_write_sem = create_named_semaphore("csp_wr", SEM_CREATE_LOCKED);
+        csp_first_frame = 1;
+        pre_record = 0;
+
         int fps = fps_get_current_x1000();
-        if (!cine_stream_begin_file(f, res_x, res_y, fps, BPP))
+        if (!mlv_cinepack_begin_file(f, res_x, res_y, fps, BPP))
         {
             NotifyBox(5000, "CSP stream error");
             goto cleanup;
@@ -3838,7 +3843,7 @@ abort_and_check_early_stop:
         free_slot(slot_index);
     }
 
-    if (!written_total && !cine_codec_stream_mode())
+    if (!written_total && !mlv_cinepack_stream_mode())
     {
         bmp_printf( FONT_MED, 30, 110, 
             "Nothing saved, card full maybe."
@@ -3846,7 +3851,7 @@ abort_and_check_early_stop:
         beep_times(3);
         msleep(2000);
     }
-    else if (cine_codec_stream_mode() && !cine_stream_frame_count())
+    else if (mlv_cinepack_stream_mode() && !mlv_cinepack_frame_count())
     {
         bmp_printf( FONT_MED, 30, 110, 
             "CSP stream empty — card full maybe."
@@ -3856,9 +3861,9 @@ abort_and_check_early_stop:
     }
 
 cleanup:
-    if (cine_codec_stream_mode())
+    if (mlv_cinepack_stream_mode())
     {
-        cine_stream_end();
+        mlv_cinepack_end_file();
         if (f) FIO_CloseFile(f);
     }
     else if (f)
@@ -3866,12 +3871,12 @@ cleanup:
         finish_chunk(f);
     }
 
-    if (!written_total && !cine_codec_stream_mode())
+    if (!written_total && !mlv_cinepack_stream_mode())
     {
         FIO_RemoveFile(raw_movie_filename);
         raw_movie_filename = 0;
     }
-    else if (cine_codec_stream_mode() && !cine_stream_frame_count() && raw_movie_filename)
+    else if (mlv_cinepack_stream_mode() && !mlv_cinepack_frame_count() && raw_movie_filename)
     {
         FIO_RemoveFile(raw_movie_filename);
         raw_movie_filename = 0;
@@ -4558,6 +4563,18 @@ unsigned int mlv_lite_cine_arm(
     h264_proxy_menu = 0;
     preview_mode = 2; /* ML framing preview */
     raw_video_enabled = 1;
+
+    {
+        int pack = get_config_var("cine.codec.pack");
+        int quality = get_config_var("cine.codec.quality");
+        int res_i = get_config_var("cine.rec.res");
+        int fps_i = get_config_var("cine.rec.fps");
+        int beast = get_config_var("cine.rec.beast");
+        if (!quality) quality = 85;
+        mlv_cinepack_arm(pack ? 1 : 0, quality, res_i, fps_i, beast);
+        printf("mlv_lite_cine_arm: CSP pack=%d fmt=%d preview=%d\n",
+            pack, output_format, preview_lv_scale_index);
+    }
 
     refresh_raw_settings(1);
     return raw_video_enabled ? 1 : 0;

@@ -117,9 +117,10 @@ void cine_debug_log_mlv_state(void)
     cine_debug_log("crop.preset=%d crop.lv=%d",
         get_config_var("crop.preset"),
         get_config_var("crop.lv_res_pct"));
-    cine_debug_log("mlv_armed=%d fmt=%s",
-        cinema_record_mlv_armed(),
-        cinema_record_format_label());
+    cine_debug_log("cine.codec.pack=%d bpp=%s peaking=%d",
+        get_config_var("cine.codec.pack"),
+        cinema_record_bpp_label(),
+        cinema_record_peaking_on());
 }
 
 int cine_debug_overlay_enabled(void) { return cine_debug_overlay; }

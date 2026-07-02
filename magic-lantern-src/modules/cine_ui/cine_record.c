@@ -225,8 +225,14 @@ static int cine_apply_settings(void)
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
 
     cine_codec_set_mode(1, 90);
+    set_config_var("cine.codec.pack", 1);
+    set_config_var("cine.codec.quality", 90);
     cine_codec_set_record_profile(cine_res, cine_fps, cine_beast);
-    fmt = 4;
+    {
+        static const int cine_bpp_fmt[] = { 3, 4, 2, 5 };
+        int bi = COERCE(get_config_var("cine.rec.bpp"), 0, 3);
+        fmt = cine_bpp_fmt[bi];
+    }
 
     if (cine_beast == 1) /* BEAST 4K25 */
     {
@@ -278,6 +284,12 @@ static int cine_apply_settings(void)
 
     /* anamorphic.preview: 0=OFF, 7=2:1 stretch for 2x lenses */
     set_config_var("anamorphic.preview", cine_anam ? 7 : 0);
+    set_config_var("focus.peaking", get_config_var("cine.rec.peaking") ? 1 : 0);
+    if (get_config_var("cine.rec.peaking"))
+    {
+        set_config_var("focus.peaking.disp", 2);
+        set_config_var("focus.peaking.thr", 4);
+    }
 
     msleep(300);
     NotifyBoxHide();

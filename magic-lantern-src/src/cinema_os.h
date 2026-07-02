@@ -27,6 +27,7 @@
 #define CINE_ICON_SENSOR      ICON_ML_OVERLAY
 #define CINE_ICON_BEAST       ICON_ML_MOVIE
 #define CINE_ICON_LV          ICON_ML_DISPLAY
+#define CINE_ICON_FOCUS       ICON_ML_FOCUS
 
 #define CINE_NAV_H           56
 #define CINE_SUBHEADER_H     40
