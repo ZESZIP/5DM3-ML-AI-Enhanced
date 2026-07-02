@@ -25,7 +25,7 @@ ML/          (entire folder)
 
 ## Verify correct build
 
-Press Delete → **Help** tab. Version must contain **`CINEMA.OS.2026.5D3`**.
+Press Delete → **Help** tab. Version must contain **`CINE.AI.ENHANCED`** or **`CINEMA.OS`**.
 
 `ML/modules/cine_ui.mo` must exist on the card (~7 KB). Without it, no Cinema Record UI loads.
 
