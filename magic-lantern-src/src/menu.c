@@ -39,6 +39,7 @@
 #include "debug.h"
 #include "lvinfo.h"
 #include "powersave.h"
+#include "cinema_os.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -2771,6 +2772,21 @@ entry_print(
     /* do not show right-side info in dynamic menus (looks a little tidier) */
     if (not_at_home)
         info->rinfo[0] = 0;
+
+    if (cinema_os_enabled() && !submenu_level && !in_submenu && !not_at_home)
+    {
+        struct menu * tab = entry->parent_menu;
+        while (tab && tab->parent_menu) tab = tab->parent_menu;
+        if (tab && !IS_SUBMENU(tab))
+        {
+            int fg = COLOR_WHITE, bg = COLOR_BLACK, accent = COLOR_ORANGE;
+            cinema_os_get_entry_colors(tab, entry, info, 0, &fg, &bg, &accent);
+            fnt = FONT(FONT_LARGE, fg, bg);
+            y_font_offset = (h - (int)font_large.height) / 2;
+            if (!entry->selected && tab->icon != ICON_ML_MOVIE)
+                bmp_fill(accent, x - 10, y + 4, 5, h - 8);
+        }
+    }
     
     if (
             not_at_home &&                       /* special display to show where it's coming from */
@@ -3580,14 +3596,15 @@ menu_display(
             }
             
             // display current entry
-            int ok = menu_entry_process(menu, entry, x, y, font_large.height + local_spacing, only_selected);
+            int row_h = cinema_os_enabled() ? cinema_os_entry_row_height() : font_large.height;
+            int ok = menu_entry_process(menu, entry, x, y, row_h + local_spacing, only_selected);
             
             // entry asked for custom draw? stop here
             if (!ok)
                 goto end;
             
             // move down for next item
-            y += font_large.height + local_spacing;
+            y += row_h + local_spacing;
             
             i++;
         }
@@ -4139,8 +4156,19 @@ void menus_display(
 
     if (customize_mode) fgs = get_customize_color();
 
-    bmp_fill(bgu, orig_x, y, 720, 42);
-    //~ bmp_fill(fgu, orig_x, y+42, 720, 2);
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
+    {
+        cinema_os_draw_tab_bar(menu, y);
+        struct menu * sel_tab = get_selected_toplevel_menu();
+        if (sel_tab && !submenu)
+            cinema_os_draw_content_background(sel_tab);
+    }
+    else
+    {
+        bmp_fill(bgu, orig_x, y, 720, 42);
+    }
+
+    int list_y_base = y + (cinema_os_enabled() && !junkie_mode ? cinema_os_tab_bar_height() + 30 : 55);
     
     for( ; menu ; menu = menu->next )
     {
@@ -4148,6 +4176,9 @@ void menus_display(
             continue; // empty menu
         if (IS_SUBMENU(menu))
             continue;
+
+        if (!cinema_os_enabled() || junkie_mode || menu_lv_transparent_mode)
+        {
         int fg = menu->selected ? fgs : fgu;
         int bg = menu->selected ? bgs : bgu;
         
@@ -4166,36 +4197,16 @@ void menus_display(
 
             if (menu->selected)
             {
-                    //~ bmp_printf(FONT_MED, 720 - strlen(menu->name)*font_med.width, 50, menu->name);
-                //~ else
                 if (!junkie_mode)
                     bmp_printf(FONT(FONT_CANON, fg, NO_BG_ERASE), 5, y, "%s", menu->name);
                 
                 int x1 = x - 1;
                 int x2 = x1 + icon_spacing + 2;
 
-                //~ draw_line(x1, y+42-4, x1, y+5, fgu);
-                //~ draw_line(x2, y+42-4, x2, y+5, fgu);
-                //~ draw_line(x1-1, y+42-4, x1-1, y+5, fgu);
-                //~ draw_line(x2+1, y+42-4, x2+1, y+5, fgu);
-
-                //~ draw_line(x1+4, y+1, x2-4, y+1, fgu);
-                //~ draw_line(x1+4, y, x2-4, y, fgu);
-
                 draw_line(x1-1, y+40, x2+1, y+40, bgs);
                 draw_line(x1-2, y+41, x2+2, y+41, bgs);
                 draw_line(x1-3, y+42, x2+3, y+42, bgs);
                 draw_line(x1-4, y+43, x2+4, y+43, bgs);
-
-                //~ draw_line(x1-4, y+42, x1, y+42-4, fgu);
-                //~ draw_line(x2+4, y+42, x2, y+42-4, fgu);
-                //~ draw_line(x1-4, y+41, x1, y+41-4, fgu);
-                //~ draw_line(x2+4, y+41, x2, y+41-4, fgu);
-
-                //~ draw_line(x1, y+5, x1+4, y+1, fgu);
-                //~ draw_line(x2, y+5, x2-4, y+1, fgu);
-                //~ draw_line(x1, y+4, x1+4, y, fgu);
-                //~ draw_line(x2, y+4, x2-4, y, fgu);
                 
                 draw_line(x1, y+2, x1, y+3, bgu);
                 draw_line(x1+1, y+2, x1+1, y+2, bgu);
@@ -4205,6 +4216,7 @@ void menus_display(
             }
             x += icon_spacing;
         }
+        } /* classic tabs */
         
         if (submenu) continue;
         
@@ -4228,7 +4240,7 @@ void menus_display(
             menu_display(
                 menu,
                 orig_x + MENU_OFFSET,
-                y + 55, 
+                list_y_base,
                 edit_mode ? 1 : 0
             );
             

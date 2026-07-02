@@ -11,6 +11,8 @@
 #include <fps.h>
 #include <ml-cbr.h>
 
+extern int* cinema_os_enabled_var(void);
+
 extern int ml_started;
 extern void cine_record_init(void);
 extern unsigned int cine_record_keypress(unsigned int key);
@@ -25,6 +27,12 @@ static int pct_from_index(int index)
     if (index < 0 || index >= COUNT(pct_values))
         return 100;
     return pct_values[index];
+}
+
+static MENU_UPDATE_FUNC(cine_os_update)
+{
+    MENU_SET_VALUE(cinema_os_enabled_var() && *cinema_os_enabled_var() ? "ON" : "OFF");
+    MENU_SET_HELP("2026 full-screen Delete menu: colored tabs, orange CINE workspace.");
 }
 
 static MENU_UPDATE_FUNC(cine_colors_update)
@@ -46,6 +54,17 @@ static struct menu_entry cine_ui_menu[] =
         .select = menu_open_submenu,
         .help = "2026 cinema UX: colors, dashboard, performance tweaks.",
         .children = (struct menu_entry[]) {
+            {
+                .name = "Cinema OS shell",
+                .priv = NULL,
+                .max = 1,
+                .update = cine_os_update,
+                .choices = CHOICES("OFF", "ON"),
+                .icon_type = IT_BOOL,
+                .help2 = "Delete menu becomes Cinema OS 2026:\n"
+                          "big colored tabs, orange Movie workspace,\n"
+                          "bold white text on CINE tab.",
+            },
             {
                 .name = "Color-coded menus",
                 .priv = NULL,
@@ -252,19 +271,20 @@ static unsigned int cine_boot_notify_cbr(unsigned int unused)
 
     cine_boot_msg_done = 1;
     NotifyBox(10000,
-        "5DM3 AI CINEMA 2026 loaded\n"
+        "CINEMA OS 2026\n"
         "\n"
-        "Delete = ML menu (Movie tab)\n"
-        "Open: Cinema Record\n"
+        "Delete = orange menu shell\n"
+        "CINE tab > Cinema Record\n"
         "\n"
-        "Wrong build if Help lacks 'AI.Cinema'"
+        "POWER MODE: BEAST 4K25 / 1080p120"
     );
     return 1;
 }
 
 static unsigned int cine_ui_init(void)
 {
-    cine_ui_menu[0].children[0].priv = menu_cine_colors_var();
+    cine_ui_menu[0].children[0].priv = cinema_os_enabled_var();
+    cine_ui_menu[0].children[1].priv = menu_cine_colors_var();
     menu_add("Display", cine_ui_menu, COUNT(cine_ui_menu));
     cine_record_init();
     lvinfo_add_items(cine_lv_items, COUNT(cine_lv_items));
@@ -289,6 +309,7 @@ MODULE_CONFIGS_START()
     MODULE_CONFIG(cine_depth)
     MODULE_CONFIG(cine_fps)
     MODULE_CONFIG(cine_anam)
+    MODULE_CONFIG(cine_beast)
     MODULE_CONFIG(cine_auto_apply)
 MODULE_CONFIGS_END()
 

@@ -9,7 +9,41 @@ source tree at commit `ed3e7c0d`. The full, buildable source (with our changes) 
 Install is unchanged: copy `autoexec.bin`, `ML-SETUP.FIR` and the `ML/` folder to your
 card root. No network, phone app, or PC tool required.
 
-## Phase 3: Sony-style Cinema Record UI (this update)
+## Phase 4: Cinema OS shell + BEAST power modes (this update)
+
+### Cinema OS — your own menu on top of ML
+
+Press **Delete** and you get **Cinema OS 2026** instead of classic ML chrome (toggle:
+`Display → Cinema UI → Cinema OS shell`, ON by default):
+
+- **56px colored tab bar** — big ML icons, short labels (CINE, SHOOT, EXPO, FOCUS, …)
+- **CINE tab** — full orange workspace, white bold menu rows, black/orange selection invert
+- Other tabs — black content area with colored accent stripe matching category
+- Taller 40px menu rows for touch-friendly readability on the 720×480 LCD
+
+Core ML menus are unchanged underneath — Cinema OS is a presentation layer on `menu.c`.
+
+*Files: `magic-lantern-src/src/cinema_os.c`, `cinema_os.h`, hooks in `menu.c`*
+
+### BEAST power modes — `Movie → Cinema Record → POWER MODE`
+
+One-tap optimized profiles that arm crop + MLV + FPS + preview together:
+
+| Mode | What it sets |
+|------|----------------|
+| **BEAST 4K25** | UHD crop, ~3840 window, 16:9, **10-bit**, 25 fps, 50% preview, small hacks ON |
+| **BEAST 1080p120** | 3×3 crop, 50% readout, 1920, **10-bit**, 120 fps target, 25% preview |
+| **MANUAL** | Your scroll selections (resolution, aspect, depth, FPS, anamorphic) |
+
+BEAST modes also enable `raw.small.hacks` and aggressive preview downscale so DIGIC work
+stays lower while the MLV file keeps full configured resolution. **1080p120** still needs
+Canon **720p 50/60** in the body menu; the 5D3 may clamp sustained FPS below 120.
+
+*Files: `magic-lantern-src/modules/cine_ui/cine_record.c`*
+
+---
+
+## Phase 3: Sony-style Cinema Record UI
 
 ### One-screen recording setup — `Movie → Cinema Record`
 
@@ -119,7 +153,7 @@ sudo apt-get install -y gcc-arm-none-eabi
 pip3 install docutils
 
 cd magic-lantern-src/platform/5D3.123
-make VERSION="2026-07-02.5D3.123.PROC5D3" -j"$(nproc)"
+make VERSION="CINEMA.OS.2026.5D3" -j"$(nproc)"
 # output: build/autoexec.bin, build/zip/ML/
 ```
 
