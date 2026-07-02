@@ -19,7 +19,7 @@
 static CONFIG_INT("cine.rec.res", cine_res, 1);
 static CONFIG_INT("cine.rec.fps", cine_fps, 1);
 static CONFIG_INT("cine.rec.beast", cine_beast, 0);
-static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 5);
+static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 1);
 static CONFIG_INT("cinema.rec.container", cinema_rec_container, 1);
 static CONFIG_INT("cine.sensor.pct", cine_sensor_pct, 100);
 static CONFIG_INT("cine.lv.pct", cine_lv_pct, 50);
@@ -31,15 +31,12 @@ static const int    fps_idx[]      = { 33, 34, 60, 63, 75, 77 };
 
 static const char * fmt_labels[] = {
     "MOV (Canon H.264)",
-    "MLV 14-bit",
-    "MLV 12-bit",
-    "MLV 10-bit",
-    "MLV LJ92 14-bit",
-    "MLV LJ92 12-bit",
     "CINEPACK Stream Pro"
 };
 
-static const int fmt_output[] = { -1, 0, 1, 2, 3, 4, 4 };
+#define CINE_FMT_MOV       0
+#define CINE_FMT_CINEPACK  1
+#define CINE_RAW_FMT_ARM   4  /* internal raw path; CINEPACK replaces card output */
 
 static const int res_presets[] = {
     640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3072, 3520, 4096, 5796
@@ -90,8 +87,15 @@ void cinema_record_set_fps(int fps_idx)
 
 void cinema_record_set_format_idx(int fmt_idx)
 {
+  if (fmt_idx > CINE_FMT_CINEPACK)
+        fmt_idx = CINE_FMT_CINEPACK; /* migrate legacy MLV indices */
     cine_fmt_idx = COERCE(fmt_idx, 0, COUNT(fmt_labels) - 1);
-    cinema_rec_container = (cine_fmt_idx == 0) ? CINE_REC_MOV : CINE_REC_MLV;
+    cinema_rec_container = (cine_fmt_idx == CINE_FMT_MOV) ? CINE_REC_MOV : CINE_REC_MLV;
+}
+
+int cinema_record_format_is_cinepack(void)
+{
+    return COERCE(cine_fmt_idx, 0, COUNT(fmt_labels) - 1) == CINE_FMT_CINEPACK;
 }
 
 void cinema_record_set_sensor_pct(int pct)
@@ -108,7 +112,9 @@ void cinema_record_set_lv_pct(int pct)
 
 const char * cinema_record_container_label(void)
 {
-    return cinema_rec_container == CINE_REC_MLV ? "MLV" : "MOV";
+    if (cinema_rec_container == CINE_REC_MOV)
+        return "MOV";
+    return cinema_record_format_is_cinepack() ? "CIX" : "RAW";
 }
 
 const char * cinema_record_format_label(void)
@@ -162,9 +168,11 @@ int cinema_record_apply_full(void)
     cine_res     = COERCE(cine_res, 0, COUNT(res_labels) - 1);
     cine_fps     = COERCE(cine_fps, 0, COUNT(fps_labels) - 1);
     cine_fmt_idx = COERCE(cine_fmt_idx, 0, COUNT(fmt_labels) - 1);
-    cinema_rec_container = (cine_fmt_idx == 0) ? CINE_REC_MOV : CINE_REC_MLV;
+    if (cine_fmt_idx > CINE_FMT_CINEPACK)
+        cine_fmt_idx = CINE_FMT_CINEPACK;
+    cinema_rec_container = (cine_fmt_idx == CINE_FMT_MOV) ? CINE_REC_MOV : CINE_REC_MLV;
 
-    int use_cinepack = (cine_fmt_idx == 6);
+    int use_cinepack = cinema_record_format_is_cinepack();
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
 
     cine_codec_set_mode(use_cinepack, 90);
@@ -176,14 +184,15 @@ int cinema_record_apply_full(void)
 
     if (cine_beast == 1)
     {
-        crop = 6; res_x = 9; aspect = 10; fmt = 4; fps_i = 34;
-        cine_fmt_idx = use_cinepack ? 6 : 5;
+        crop = 6; res_x = 9; aspect = 10; fmt = CINE_RAW_FMT_ARM; fps_i = 34;
+        cine_fmt_idx = CINE_FMT_CINEPACK;
         cinema_rec_container = CINE_REC_MLV;
     }
     else if (cine_beast == 2)
     {
-        crop = 3; ro_pct = 2; res_x = 4; aspect = 10; fmt = 4; fps_i = 77;
+        crop = 3; ro_pct = 2; res_x = 4; aspect = 10; fmt = CINE_RAW_FMT_ARM; fps_i = 77;
         preview_scale = 3;
+        cine_fmt_idx = CINE_FMT_CINEPACK;
         cinema_rec_container = CINE_REC_MLV;
         NotifyBox(3500, "High FPS: Canon menu 720p 50/60.");
     }
@@ -194,12 +203,9 @@ int cinema_record_apply_full(void)
         aspect = 10;
         fps_i = fps_idx[cine_fps];
         if (cinema_rec_container == CINE_REC_MLV)
-        {
-            int fi = COERCE(cine_fmt_idx, 1, COUNT(fmt_output) - 1);
-            fmt = fmt_output[fi];
-            if (fmt < 0) fmt = 4;
-        }
-        else fmt = 4;
+            fmt = CINE_RAW_FMT_ARM;
+        else
+            fmt = CINE_RAW_FMT_ARM;
     }
 
     gui_uilock(UILOCK_EVERYTHING);

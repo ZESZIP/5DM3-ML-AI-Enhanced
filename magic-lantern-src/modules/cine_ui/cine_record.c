@@ -12,10 +12,15 @@
 #include <gui.h>
 #include <beep.h>
 
+#include "../../../src/cinema_os.h"
+
+extern void cine_codec_set_mode(int use_cinepack, int quality_pct);
+extern void cine_codec_set_record_profile(int res_idx, int fps_idx, int beast_mode);
+
 /* resolution tiers (target horizontal pixels) */
 static CONFIG_INT("cine.rec.res", cine_res, 1);
 static CONFIG_INT("cine.rec.aspect", cine_aspect, 0);
-static CONFIG_INT("cine.rec.depth", cine_depth, 0);
+static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 1);
 static CONFIG_INT("cine.rec.fps", cine_fps, 0);
 static CONFIG_INT("cine.rec.anam", cine_anam, 0);
 static CONFIG_INT("cine.rec.field", cine_field, 0);
@@ -30,8 +35,8 @@ static const int    cine_res_target_w[] = { 1280, 1920, 2704, 3840, 5760 };
 static const char * cine_aspect_labels[] = { "16:9", "2.39:1", "2.35:1", "2:1", "4:3", "1:1" };
 static const int    cine_aspect_idx[]    = { 10, 5, 6, 8, 13, 16 };
 
-static const char * cine_depth_labels[] = { "14-bit", "12-bit", "10-bit", "8-bit" };
-static const int    cine_depth_fmt[]    = { 3, 4, 2, 5 };
+static const char * cine_codec_labels[] = { "MOV (Canon H.264)", "CINEPACK Stream Pro" };
+static const int    cine_codec_icons[]  = { CINE_ICON_MOV, CINE_ICON_CINEPACK };
 
 static const char * cine_fps_labels[] = { "24", "25", "50", "60", "100", "120" };
 static const int    cine_fps_idx[]    = { 33, 34, 60, 63, 75, 77 };
@@ -41,13 +46,13 @@ static const char * cine_anam_labels[] = { "OFF", "2x squeeze" };
 #define CINE_FIELD_BEAST  (-1)
 #define CINE_FIELD_RES    0
 #define CINE_FIELD_ASPECT 1
-#define CINE_FIELD_DEPTH  2
+#define CINE_FIELD_CODEC  2
 #define CINE_FIELD_FPS    3
 #define CINE_FIELD_ANAM   4
 
 static const int cine_field_order[] = {
     CINE_FIELD_BEAST,
-    CINE_FIELD_RES, CINE_FIELD_ASPECT, CINE_FIELD_DEPTH,
+    CINE_FIELD_RES, CINE_FIELD_ASPECT, CINE_FIELD_CODEC,
     CINE_FIELD_FPS, CINE_FIELD_ANAM
 };
 #define CINE_FIELD_ROWS COUNT(cine_field_order)
@@ -101,6 +106,21 @@ static int cine_readout_pct_index(int fps_sel)
     return 0;
 }
 
+static int cine_field_icon(int field)
+{
+    switch (field)
+    {
+        case CINE_FIELD_BEAST:  return CINE_ICON_BEAST;
+        case CINE_FIELD_RES:    return CINE_ICON_RES;
+        case CINE_FIELD_ASPECT: return CINE_ICON_GAMMA;
+        case CINE_FIELD_CODEC:
+            return cine_codec_icons[COERCE(cine_fmt_idx, 0, COUNT(cine_codec_labels) - 1)];
+        case CINE_FIELD_FPS:    return CINE_ICON_FPS;
+        case CINE_FIELD_ANAM:   return CINE_ICON_APERTURE;
+    }
+    return ICON_ML_INFO;
+}
+
 static const char * cine_field_label(int field)
 {
     switch (field)
@@ -108,7 +128,7 @@ static const char * cine_field_label(int field)
         case CINE_FIELD_BEAST:  return "POWER MODE";
         case CINE_FIELD_RES:    return "RESOLUTION";
         case CINE_FIELD_ASPECT: return "ASPECT";
-        case CINE_FIELD_DEPTH:  return "BIT DEPTH";
+        case CINE_FIELD_CODEC:  return "CODEC";
         case CINE_FIELD_FPS:    return "FRAME RATE";
         case CINE_FIELD_ANAM:   return "ANAMORPHIC";
     }
@@ -126,8 +146,8 @@ static const char * cine_field_value(int field)
             return cine_res_labels[cine_res];
         case CINE_FIELD_ASPECT:
             return cine_aspect_labels[cine_aspect];
-        case CINE_FIELD_DEPTH:
-            return cine_depth_labels[cine_depth];
+        case CINE_FIELD_CODEC:
+            return cine_codec_labels[COERCE(cine_fmt_idx, 0, COUNT(cine_codec_labels) - 1)];
         case CINE_FIELD_FPS:
             snprintf(buf, sizeof(buf), "%s fps", cine_fps_labels[cine_fps]);
             return buf;
@@ -142,7 +162,8 @@ static void cine_clamp_selections(void)
     cine_beast  = COERCE(cine_beast, 0, COUNT(cine_beast_labels) - 1);
     cine_res    = COERCE(cine_res, 0, COUNT(cine_res_labels) - 1);
     cine_aspect = COERCE(cine_aspect, 0, COUNT(cine_aspect_labels) - 1);
-    cine_depth  = COERCE(cine_depth, 0, COUNT(cine_depth_labels) - 1);
+    cine_fmt_idx = COERCE(cine_fmt_idx, 0, COUNT(cine_codec_labels) - 1);
+    if (cine_fmt_idx > 1) cine_fmt_idx = 1;
     cine_fps    = COERCE(cine_fps, 0, COUNT(cine_fps_labels) - 1);
     cine_anam   = COERCE(cine_anam, 0, COUNT(cine_anam_labels) - 1);
     cine_field  = COERCE(cine_field, 0, CINE_FIELD_ROWS - 1);
@@ -162,8 +183,8 @@ static int cine_adjust_field(int field, int delta)
         case CINE_FIELD_ASPECT:
             cine_aspect = MOD(cine_aspect + delta, COUNT(cine_aspect_labels));
             break;
-        case CINE_FIELD_DEPTH:
-            cine_depth = MOD(cine_depth + delta, COUNT(cine_depth_labels));
+        case CINE_FIELD_CODEC:
+            cine_fmt_idx = MOD(cine_fmt_idx + delta, COUNT(cine_codec_labels));
             break;
         case CINE_FIELD_FPS:
             cine_fps = MOD(cine_fps + delta, COUNT(cine_fps_labels));
@@ -193,29 +214,39 @@ static int cine_apply_settings(void)
 
     cine_clamp_selections();
 
+    if (cine_fmt_idx == 0)
+    {
+        set_config_var("raw.video.enabled", 0);
+        cine_codec_set_mode(0, 85);
+        NotifyBox(3000, "MOV mode.\nPress REC for Canon H.264.");
+        return 1;
+    }
+
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
 
-    if (cine_beast == 1) /* BEAST 4K25 — UHD crop, 10-bit, 25fps */
+    cine_codec_set_mode(1, 90);
+    cine_codec_set_record_profile(cine_res, cine_fps, cine_beast);
+    fmt = 4;
+
+    if (cine_beast == 1) /* BEAST 4K25 */
     {
         crop = 6;
         ro_pct = 0;
-        res_x = 9;   /* 3520, closest to 3840 UHD window */
-        aspect = 10; /* 16:9 */
-        fmt = 2;     /* 10-bit */
-        fps_i = 34;  /* 25 fps */
-        preview_scale = 2; /* 50% preview */
-        cine_res = 3; cine_aspect = 0; cine_depth = 2; cine_fps = 1;
-    }
-    else if (cine_beast == 2) /* BEAST 1080p120 — max crop path, 10-bit */
-    {
-        crop = 3;    /* 3x3 50/60 */
-        ro_pct = 2;  /* 50% readout */
-        res_x = 4;   /* 1920 */
+        res_x = 9;
         aspect = 10;
-        fmt = 2;
-        fps_i = 77;  /* 120 fps target — HW may clamp */
-        preview_scale = 3; /* 25% preview */
-        cine_res = 1; cine_aspect = 0; cine_depth = 2; cine_fps = 5;
+        fps_i = 34;
+        preview_scale = 2;
+        cine_res = 3; cine_aspect = 0; cine_fmt_idx = 1; cine_fps = 1;
+    }
+    else if (cine_beast == 2) /* BEAST 1080p120 */
+    {
+        crop = 3;
+        ro_pct = 2;
+        res_x = 4;
+        aspect = 10;
+        fps_i = 77;
+        preview_scale = 3;
+        cine_res = 1; cine_aspect = 0; cine_fmt_idx = 1; cine_fps = 5;
         NotifyBox(3000, "Set Canon menu to 720p 50/60 for high FPS.");
     }
     else
@@ -224,7 +255,6 @@ static int cine_apply_settings(void)
         ro_pct = cine_readout_pct_index(cine_fps);
         res_x = cine_res_x_index(cine_res_target_w[cine_res]);
         aspect = cine_aspect_idx[cine_aspect];
-        fmt = cine_depth_fmt[cine_depth];
         fps_i = cine_fps_idx[cine_fps];
         preview_scale = (cine_fps >= 4) ? 3 : (cine_fps >= 2) ? 2 : 0;
     }
@@ -252,6 +282,7 @@ static int cine_apply_settings(void)
     msleep(300);
     NotifyBoxHide();
     beep();
+    NotifyBox(3500, "CINEPACK armed\nREC writes .CIX to card.");
 
     cine_last_apply_ms = get_ms_clock();
     return 1;
@@ -286,11 +317,15 @@ static void cine_draw_screen(void)
         else
             bmp_fill(45, 10, y - 2, 700, row_h - 4);
 
+        bfnt_draw_char(cine_field_icon(field), 18, y + 8,
+            selected ? COLOR_ORANGE : COLOR_WHITE,
+            selected ? COLOR_WHITE : 45);
+
         int label_fnt = FONT(FONT_MED, selected ? COLOR_ORANGE : COLOR_GRAY(55), selected ? COLOR_WHITE : 45);
         int value_fnt = FONT(FONT_LARGE, selected ? COLOR_ORANGE : COLOR_WHITE, selected ? COLOR_WHITE : 45);
 
-        bmp_printf(label_fnt, 24, y + 2, "%s", cine_field_label(field));
-        bmp_printf(value_fnt, 24, y + 22, "%s", cine_field_value(field));
+        bmp_printf(label_fnt, 72, y + 2, "%s", cine_field_label(field));
+        bmp_printf(value_fnt, 72, y + 22, "%s", cine_field_value(field));
 
         if (selected)
             bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_WHITE), 620, y + 16, "< >");
@@ -301,11 +336,26 @@ static void cine_draw_screen(void)
     if (cine_beast)
         bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 16, foot_y + 8, "BEAST: %s", cine_beast_labels[cine_beast]);
     if (get_config_var("raw.video.enabled"))
-        bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 560, foot_y + 8, "ARMED");
+    {
+        if (cine_fmt_idx == 1)
+            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 8, "CIX ARMED");
+        else
+            bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 560, foot_y + 8, "ARMED");
+    }
+    else if (cine_fmt_idx == 0)
+        bmp_printf(FONT(FONT_MED, COLOR_LIGHT_BLUE, COLOR_BLACK), 520, foot_y + 8, "MOV MODE");
 }
 
 static MENU_UPDATE_FUNC(cine_record_update)
 {
+    if (cinema_os_enabled())
+    {
+        MENU_SET_SHIDDEN(1);
+        cine_record_active = 0;
+        return;
+    }
+    MENU_SET_SHIDDEN(0);
+
     if (!entry->selected)
     {
         cine_record_active = 0;
@@ -386,9 +436,9 @@ static struct menu_entry cine_record_menu[] =
         .update = cine_record_update,
         .icon_type = IT_ACTION,
         .depends_on = DEP_LIVEVIEW | DEP_MOVIE_MODE,
-        .help = "Sony-style scroll UI: resolution, aspect, bit depth, FPS.",
-        .help2 = "Sets crop mode, MLV format and FPS override together.\n"
-                  "5D3 hardware still limits max fps/resolution per mode.",
+        .help = "Sony-style scroll UI: resolution, aspect, codec, FPS.",
+        .help2 = "MOV = Canon H.264. CINEPACK Stream Pro writes .CIX\n"
+                  "straight to card (convert to MLV on PC).",
     },
 };
 

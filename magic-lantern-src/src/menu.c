@@ -3017,6 +3017,9 @@ skip_name:
     // selection bar
     if (entry->selected)
     {
+        int cine_os_row = cinema_os_enabled() && !menu_lv_transparent_mode && !junkie_mode
+            && (in_submenu || !submenu_level);
+
         int color_left = 45;
         int color_right = menu_cine_colors ? menu_category_color_for_entry(entry) : MENU_BAR_COLOR;
         if (cinema_os_enabled())
@@ -3024,15 +3027,18 @@ skip_name:
         if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
         if (customize_mode) { color_left = color_right = get_customize_color(); }
 
-        if (cinema_os_enabled() && !menu_lv_transparent_mode)
+        if (!cine_os_row)
         {
-            cine_ui_draw_shadow(xl, y, x_end - xl, h, 2);
-            cine_ui_draw_selection_bar(xl, y, x_end - xl, h, color_right, 1);
-        }
-        else
-        {
-            selection_bar_backend(color_left, COLOR_BLACK, xl, y, xc-xl, h-1);
-            selection_bar_backend(color_right, COLOR_BLACK, xc, y, x_end-xc, h-1);
+            if (cinema_os_enabled() && !menu_lv_transparent_mode)
+            {
+                cine_ui_draw_shadow(xl, y, x_end - xl, h, 2);
+                cine_ui_draw_selection_bar(xl, y, x_end - xl, h, color_right, 1);
+            }
+            else
+            {
+                selection_bar_backend(color_left, COLOR_BLACK, xl, y, xc-xl, h-1);
+                selection_bar_backend(color_right, COLOR_BLACK, xc, y, x_end-xc, h-1);
+            }
         }
         
         // use a pickbox if possible
@@ -3610,7 +3616,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (scroll_pos > 0 && !(cinema_os_enabled() && !junkie_mode))
+    if (scroll_pos > 0 && !(cinema_os_enabled() && !junkie_mode && cinema_os_uses_cinematic_canvas()))
     {
         for (int i = -13; i <= 13; i++)
             draw_line(360 - i, y + 8 - 12, 360, y - 12, MENU_BAR_COLOR);
@@ -3664,7 +3670,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (more_entries && !(cinema_os_enabled() && !junkie_mode))
+    if (more_entries && !(cinema_os_enabled() && !junkie_mode && cinema_os_uses_cinematic_canvas()))
     {
         y += 10;
         for (int i = -13; i <= 13; i++)
@@ -4307,6 +4313,7 @@ void menus_display(
                         list_y_base,
                         edit_mode ? 1 : 0
                     );
+                    show_vscroll(menu);
                 }
             }
             else

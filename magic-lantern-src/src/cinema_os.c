@@ -61,8 +61,8 @@ enum {
 };
 
 static const int row_icons[CINE_ROW_COUNT] = {
-    ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
-    ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_SHOOT, ICON_ML_AUDIO
+    CINE_ICON_RES, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
@@ -112,7 +112,7 @@ int cinema_os_page_menu_icon(cinema_os_page_t page)
 }
 
 int cinema_os_tab_bar_height(void) { return CINE_NAV_H; }
-int cinema_os_entry_row_height(void) { return 52; }
+int cinema_os_entry_row_height(void) { return CINE_ROW_H; }
 
 int cinema_os_uses_cinematic_canvas(void)
 {
@@ -137,18 +137,31 @@ void cinema_os_draw_status_footer(void)
     int page_c = cinema_os_page_color(cinema_os_active_page());
     cine_ui_draw_hd_panel(0, foot_y, 720, 48, page_c);
     bmp_printf(FONT(FONT_MED, COLOR_WHITE, page_c), 16, foot_y + 6, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-        "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
+
+    if (cinema_panel_is_open())
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R option   SET apply   MENU back");
+    else if (cinema_os_uses_cinematic_canvas())
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R pages   Up/Dn row   SET panel");
+    else
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R pages   Up/Dn select   SET enter");
 
     if (cinema_os_uses_cinematic_canvas())
     {
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 4,
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 4,
             "%s", cinema_write_speed_label());
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 24,
-            "PROFILE: %s", cinema_write_profile_label());
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 24,
+            "%s", cinema_write_profile_label());
 
         if (cinema_record_mlv_armed())
-            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "MLV ARMED");
+        {
+            if (cinema_record_format_is_cinepack())
+                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 500, foot_y + 4, "CIX ARMED");
+            else
+                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "RAW ARMED");
+        }
         else
             bmp_printf(FONT(FONT_MED, COLOR_LIGHT_BLUE, COLOR_BLACK), 520, foot_y + 4, "MOV MODE");
 
@@ -264,8 +277,8 @@ void cinema_os_draw_nav_bar(int y)
 {
     int bar_h = CINE_NAV_H;
     int active_c = cinema_os_page_color(cinema_os_active_page());
-    bmp_fill(COLOR_BLACK, 0, y, 720, bar_h);
-    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
+
+    cine_ui_draw_backdrop(0, y, 720, bar_h, active_c);
 
     int tile_w = 720 / CINE_PAGE_COUNT;
     cinema_os_page_t active = cinema_os_active_page();
@@ -277,6 +290,8 @@ void cinema_os_draw_nav_bar(int y)
         int sel = (i == (int) active);
         cine_ui_draw_hd_nav_tab(x, y, tile_w, bar_h, color, sel, page_labels[i], page_icons[i]);
     }
+
+    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
 }
 
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)

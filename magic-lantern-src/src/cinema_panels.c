@@ -19,19 +19,18 @@
 
 static int panel_row = -1;
 static int panel_sel = 0;
+static int panel_scroll = 0;
+static int panel_apply_failed = 0;
 
 static const char * beast_labels[] = { "BEAST 4K25", "BEAST 1080p120" };
 static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K UHD", "6K" };
 static const char * fps_opts[]     = { "24 fps", "25 fps", "50 fps", "60 fps", "100 fps", "120 fps" };
 static const char * fmt_opts[] = {
     "MOV (Canon H.264)",
-    "MLV 14-bit",
-    "MLV 12-bit",
-    "MLV 10-bit",
-    "MLV LJ92 14-bit",
-    "MLV LJ92 12-bit",
     "CINEPACK Stream Pro"
 };
+
+static const int fmt_icons[] = { CINE_ICON_MOV, CINE_ICON_CINEPACK };
 
 static const char * sensor_opts[] = { "Sensor 100%", "Sensor 75%", "Sensor 50%", "Sensor 25%" };
 static const int    sensor_vals[]  = { 100, 75, 50, 25 };
@@ -39,14 +38,36 @@ static const char * lv_opts[]     = { "LV preview 100%", "LV preview 75%", "LV p
 static const int    lv_vals[]     = { 100, 75, 50, 25 };
 
 static const int row_icons[] = {
-    ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
-    ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_SHOOT, ICON_ML_AUDIO
+    CINE_ICON_RES, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
 };
 
 static CONFIG_INT("cine.rec.beast", cine_beast, 0);
 static CONFIG_INT("cine.rec.res", cine_res, 1);
 static CONFIG_INT("cine.rec.fps", cine_fps, 1);
-static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 5);
+static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 1);
+
+static int panel_option_icon(int row, int opt)
+{
+    switch (row)
+    {
+        case 0:
+            if (opt < COUNT(beast_labels)) return CINE_ICON_BEAST;
+            if (opt < COUNT(beast_labels) + COUNT(res_labels)) return CINE_ICON_RES;
+            if (opt < COUNT(beast_labels) + COUNT(res_labels) + COUNT(sensor_opts))
+                return CINE_ICON_SENSOR;
+            return CINE_ICON_RES;
+        case 1: return CINE_ICON_FPS;
+        case 2: return (opt >= 0 && opt < COUNT(fmt_icons)) ? fmt_icons[opt] : CINE_ICON_CODEC;
+        case 3: return CINE_ICON_GAMMA;
+        case 4: return CINE_ICON_SHUTTER;
+        case 5: return CINE_ICON_APERTURE;
+        case 6: return CINE_ICON_ISO;
+        case 7: return CINE_ICON_WB;
+        case 8: return CINE_ICON_AUDIO;
+        default: return ICON_ML_INFO;
+    }
+}
 
 static int panel_option_count(int row)
 {
@@ -65,6 +86,45 @@ static int panel_option_count(int row)
     }
 }
 
+static int panel_shutter_sel(void)
+{
+    int sr = get_current_shutter_reciprocal_x1000();
+    int angle = sr ? (500000 / sr) : 180;
+    if (angle <= 60) return 0;
+    if (angle <= 120) return 1;
+    if (angle <= 270) return 2;
+    if (angle < 500) return 3;
+    return 4;
+}
+
+static int panel_iso_sel(void)
+{
+    static const int iso[] = { 100, 200, 400, 800, 1600, 3200, 6400, 12800 };
+    int cur = raw2iso(lens_info.raw_iso);
+    int best = 0;
+    int best_d = 1000000;
+    for (int i = 0; i < COUNT(iso); i++)
+    {
+        int d = ABS(iso[i] - cur);
+        if (d < best_d) { best_d = d; best = i; }
+    }
+    return best;
+}
+
+static int panel_wb_sel(void)
+{
+    if (lens_info.wb_mode == 0) return 0;
+    if (lens_info.wb_mode == WB_KELVIN)
+    {
+        int k = lens_info.kelvin;
+        if (k <= 3400) return 2;
+        if (k <= 4800) return 3;
+        if (k <= 6000) return 1;
+        return 4;
+    }
+    return 1;
+}
+
 static void panel_sync_sel(int row)
 {
     switch (row)
@@ -73,14 +133,19 @@ static void panel_sync_sel(int row)
             panel_sel = cine_beast ? (cine_beast - 1) : (COUNT(beast_labels) + cine_res);
             break;
         case 1: panel_sel = cine_fps; break;
-        case 2: panel_sel = cine_fmt_idx; break;
+        case 2:
+            panel_sel = COERCE(cine_fmt_idx, 0, COUNT(fmt_opts) - 1);
+            if (panel_sel > 1) panel_sel = 1;
+            break;
         case 3: panel_sel = COERCE(lens_info.picstyle - 1, 0, 6); break;
-        case 4: panel_sel = 2; break;
+        case 4: panel_sel = panel_shutter_sel(); break;
         case 5: panel_sel = 0; break;
-        case 6: panel_sel = 4; break;
-        case 7: panel_sel = 1; break;
+        case 6: panel_sel = panel_iso_sel(); break;
+        case 7: panel_sel = panel_wb_sel(); break;
         case 8: panel_sel = 0; break;
     }
+    panel_scroll = 0;
+    if (panel_sel >= 5) panel_scroll = panel_sel - 4;
 }
 
 static void panel_get_label(int row, int opt, char * buf, int len)
@@ -114,7 +179,7 @@ static void panel_get_label(int row, int opt, char * buf, int len)
             break;
         }
         case 5:
-            snprintf(buf, len, "Current: %s", lens_format_aperture(lens_info.raw_aperture));
+            snprintf(buf, len, "Open Expo menu: %s", lens_format_aperture(lens_info.raw_aperture));
             break;
         case 6:
         {
@@ -242,10 +307,15 @@ void cinema_panel_open(int row)
 {
     if (row < 0 || row > 8) return;
     panel_row = row;
+    panel_apply_failed = 0;
     panel_sync_sel(row);
 }
 
-void cinema_panel_close(void) { panel_row = -1; }
+void cinema_panel_close(void)
+{
+    panel_row = -1;
+    panel_apply_failed = 0;
+}
 
 void cinema_panel_draw(int y0, int body_h)
 {
@@ -256,32 +326,37 @@ void cinema_panel_draw(int y0, int body_h)
         "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "AUDIO"
     };
 
-    bmp_fill(COLOR_BLACK, 0, y0 - 8, 720, body_h + 16);
+    cine_ui_draw_veil_20(0, y0 - 8, 720, body_h + 16);
 
     int px = 24;
     int py = y0 + 4;
     int pw = 672;
     int ph = body_h - 8;
-    cine_ui_draw_submenu_frame(px, py, pw, ph, CINE_COLOR_CINEMA, titles[panel_row]);
+    int accent = panel_apply_failed ? COLOR_RED : CINE_COLOR_CINEMA;
+    cine_ui_draw_panel_frame(px, py, pw, ph, accent, titles[panel_row]);
 
     int list_y = py + 58;
     int row_h = 54;
     int count = panel_option_count(panel_row);
     int visible = MIN(count, 5);
-    int scroll = 0;
-    if (panel_sel >= visible) scroll = panel_sel - visible + 1;
+
+    if (panel_sel < panel_scroll)
+        panel_scroll = panel_sel;
+    if (panel_sel >= panel_scroll + visible)
+        panel_scroll = panel_sel - visible + 1;
 
     for (int v = 0; v < visible; v++)
     {
-        int opt = scroll + v;
+        int opt = panel_scroll + v;
         if (opt >= count) break;
         int ry = list_y + v * row_h;
         int sel = (opt == panel_sel);
         char label[64];
         panel_get_label(panel_row, opt, label, sizeof(label));
+        int icon = panel_option_icon(panel_row, opt);
 
         cine_ui_draw_row_card(px + 16, ry, pw - 32, row_h - 6, CINE_COLOR_CINEMA, sel);
-        bfnt_draw_char(row_icons[panel_row], px + 28, ry + 10,
+        bfnt_draw_char(icon, px + 28, ry + 10,
             sel ? CINE_COLOR_CINEMA : COLOR_WHITE, sel ? COLOR_BLACK : CINE_COLOR_CINEMA);
         int fg = sel ? CINE_COLOR_CINEMA : COLOR_WHITE;
         int bg = sel ? COLOR_BLACK : CINE_COLOR_CINEMA;
@@ -290,8 +365,14 @@ void cinema_panel_draw(int y0, int body_h)
             bmp_printf(FONT(FONT_MED, CINE_COLOR_CINEMA, bg), px + pw - 72, ry + 16, "< >");
     }
 
-    bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), px + 20, py + ph - 28,
-        "L/R change   SET apply   MENU back");
+    cine_ui_draw_scrollbar(px + pw - 20, list_y, visible * row_h, count, visible, panel_scroll, CINE_COLOR_CINEMA);
+
+    if (panel_apply_failed)
+        bmp_printf(FONT(FONT_SMALL, COLOR_RED, COLOR_BLACK), px + 20, py + ph - 28,
+            "Apply failed — check LiveView / stop recording");
+    else
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), px + 20, py + ph - 28,
+            "%d/%d   L/R change   SET apply   MENU back", panel_sel + 1, count);
 }
 
 int cinema_panel_handle_key(unsigned int key)
@@ -305,6 +386,7 @@ int cinema_panel_handle_key(unsigned int key)
         case BGMT_PRESS_LEFT:
         case BGMT_WHEEL_UP:
         case BGMT_PRESS_UP:
+            panel_apply_failed = 0;
             panel_sel = MOD(panel_sel - 1, count);
             return 1;
 
@@ -312,14 +394,25 @@ int cinema_panel_handle_key(unsigned int key)
         case BGMT_PRESS_RIGHT:
         case BGMT_WHEEL_DOWN:
         case BGMT_PRESS_DOWN:
+            panel_apply_failed = 0;
             panel_sel = MOD(panel_sel + 1, count);
             return 1;
 
         case BGMT_PRESS_SET:
-            panel_apply(panel_row, panel_sel);
-            cinema_panel_close();
+        {
+            int ok = panel_apply(panel_row, panel_sel);
+            if (ok)
+            {
+                cinema_panel_close();
+            }
+            else
+            {
+                panel_apply_failed = 1;
+                beep();
+            }
             menu_redraw();
             return 1;
+        }
 
         case BGMT_MENU:
         case BGMT_TRASH:
