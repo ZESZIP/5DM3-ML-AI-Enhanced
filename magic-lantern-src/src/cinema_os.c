@@ -16,6 +16,8 @@
 #include "cinema_write_engine.h"
 #include "cinema_boot.h"
 #include "cinema_panels.h"
+#include "cinema_record_apply.h"
+#include "cinema_ui_theme.h"
 #include "gui.h"
 
 static CONFIG_INT("cinema.os", cinema_os, 1);
@@ -58,8 +60,9 @@ enum {
     CINE_ROW_COUNT = 9
 };
 
-static const char * row_abbr[CINE_ROW_COUNT] = {
-    "Res", "FPS", "Fmt", "Gam", "Sht", "Apt", "ISO", "WB", "Aud"
+static const int row_icons[CINE_ROW_COUNT] = {
+    ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
+    ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_SHOOT, ICON_ML_AUDIO
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
@@ -142,8 +145,14 @@ void cinema_os_draw_status_footer(void)
             "%s", cinema_write_speed_label());
         bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 24,
             "PROFILE: %s", cinema_write_profile_label());
+
+        if (cinema_record_mlv_armed())
+            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "MLV ARMED");
+        else
+            bmp_printf(FONT(FONT_MED, COLOR_LIGHT_BLUE, COLOR_BLACK), 520, foot_y + 4, "MOV MODE");
+
         if (cinema_governor_fallback_active())
-            bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "GOVERNOR ON");
+            bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 640, foot_y + 4, "GOV");
         else if (cinema_write_engine_ready())
             bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 640, foot_y + 10, "READY");
     }
@@ -151,36 +160,14 @@ void cinema_os_draw_status_footer(void)
 
 /* ---- value formatters for CINEMATIC rows ---- */
 
-static const int res_presets[] = {
-    640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3072, 3520, 4096, 5796
-};
-
 static void cine_fmt_resolution(char * buf, int len)
 {
-    int idx = get_config_var("raw.res_x");
-    int fine = get_config_var("raw.res_x_fine");
-    int w = (idx >= 0 && idx < COUNT(res_presets)) ? res_presets[idx] + fine : 1920;
-    int h = w * 9 / 16;
-
-    if (w >= 3800)
-        snprintf(buf, len, "4K UHD (%dx%d)", w, h);
-    else if (w >= 2500)
-        snprintf(buf, len, "2.7K (%dx%d)", w, h);
-    else if (w >= 1800)
-        snprintf(buf, len, "1080p (%dx%d)", w, h);
-    else
-        snprintf(buf, len, "%dx%d", w, h);
+    snprintf(buf, len, "%s", cinema_record_resolution_label());
 }
 
 static void cine_fmt_fps(char * buf, int len)
 {
-    int fps = fps_get_current_x1000();
-    if (fps <= 0) fps = video_mode_fps * 1000;
-    int whole = fps / 1000;
-    int frac = fps % 1000;
-    if (frac == 976 || frac == 977) snprintf(buf, len, "23.976 fps");
-    else if (frac == 0) snprintf(buf, len, "%d.000 fps", whole);
-    else snprintf(buf, len, "%d.%03d fps", whole, frac);
+    snprintf(buf, len, "%s", cinema_record_fps_label());
 }
 
 static void cine_fmt_gamma(char * buf, int len)
@@ -230,7 +217,9 @@ static void cine_row_value(int row, char * buf, int len)
     {
         case CINE_ROW_RES:     cine_fmt_resolution(buf, len); break;
         case CINE_ROW_FPS:     cine_fmt_fps(buf, len); break;
-        case CINE_ROW_FORMAT:  snprintf(buf, len, "%s", cinema_governor_format_label()); break;
+        case CINE_ROW_FORMAT:
+            snprintf(buf, len, "%s", cinema_record_format_label());
+            break;
         case CINE_ROW_GAMMA:   cine_fmt_gamma(buf, len); break;
         case CINE_ROW_SHUTTER: cine_fmt_shutter(buf, len); break;
         case CINE_ROW_APERTURE:cine_fmt_aperture(buf, len); break;
@@ -243,11 +232,11 @@ static void cine_row_value(int row, char * buf, int len)
 
 /* ---- drawing primitives ---- */
 
-static void cine_draw_box_icon(int x, int y, const char * abbr)
+static void cine_draw_box_icon(int x, int y, int icon)
 {
-    bmp_fill(COLOR_TRANSPARENT_BLACK, x, y, 48, 34);
-    bmp_draw_rect(COLOR_WHITE, x, y, 48, 34);
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, NO_BG_ERASE), x + 6, y + 8, "%s", abbr);
+    bmp_fill(COLOR_GRAY(20), x, y, 48, 40);
+    bmp_draw_rect(COLOR_WHITE, x, y, 48, 40);
+    bfnt_draw_char(icon, x + 8, y + 4, COLOR_WHITE, COLOR_GRAY(20));
 }
 
 static void cine_draw_chevron(int x, int y)
@@ -266,14 +255,6 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 
     bmp_fill(COLOR_WHITE, track_x, y0 + 4, 4, track_h);
     bmp_fill(COLOR_GRAY(35), track_x, thumb_y, 4, thumb_h);
-}
-
-static void cine_draw_selection_pill(int x, int y, int w, int h)
-{
-    bmp_fill(COLOR_WHITE, x, y, w, h);
-    bmp_fill(COLOR_GRAY(50), x + 3, y + 3, w - 6, h - 6);
-    bmp_draw_rect(COLOR_WHITE, x, y, w, h);
-    bmp_draw_rect(COLOR_GRAY(70), x + 1, y + 1, w - 2, h - 2);
 }
 
 /* ---- global nav bar ---- */
@@ -357,20 +338,19 @@ int cinema_os_draw_cinematic_page(int list_y)
         int y = row_y0 + v * CINE_ROW_H;
         int sel = (row == cine_row_sel);
 
-        if (sel)
-            cine_draw_selection_pill(8, y - 4, 704, CINE_ROW_H - 2);
+        cine_ui_draw_row_card(10, y - 4, 700, CINE_ROW_H - 2, CINE_COLOR_CINEMA, sel);
 
         int fg = COLOR_WHITE;
-        int row_bg = sel ? COLOR_GRAY(50) : bg;
+        int row_bg = sel ? COLOR_GRAY(42) : CINE_COLOR_CINEMA;
 
-        cine_draw_box_icon(18, y + 8, row_abbr[row]);
+        cine_draw_box_icon(20, y + 6, row_icons[row]);
 
         char val[64];
         cine_row_value(row, val, sizeof(val));
 
-        char line[96];
-        snprintf(line, sizeof(line), "%s | %s", row_titles[row], val);
-        bmp_printf(FONT(FONT_LARGE, fg, row_bg), 76, y + 14, "%s", line);
+        bmp_printf(FONT(FONT_LARGE, fg, row_bg), 80, y + 10, "%s", row_titles[row]);
+        bmp_printf(FONT(FONT_MED, sel ? CINE_COLOR_CINEMA : COLOR_GRAY(55), row_bg),
+            80, y + 32, "%s", val);
 
         cine_draw_chevron(686, y + 16);
     }

@@ -43,6 +43,7 @@
 #include "cinema_os.h"
 #include "cinema_boot.h"
 #include "cinema_panels.h"
+#include "cinema_ui_theme.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -2993,11 +2994,21 @@ skip_name:
     {
         int color_left = 45;
         int color_right = menu_cine_colors ? menu_category_color_for_entry(entry) : MENU_BAR_COLOR;
+        if (cinema_os_enabled())
+            color_right = cine_ui_menu_accent(entry->parent_menu);
         if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
         if (customize_mode) { color_left = color_right = get_customize_color(); }
 
-        selection_bar_backend(color_left, COLOR_BLACK, xl, y, xc-xl, h-1);
-        selection_bar_backend(color_right, COLOR_BLACK, xc, y, x_end-xc, h-1);
+        if (cinema_os_enabled() && !menu_lv_transparent_mode)
+        {
+            cine_ui_draw_shadow(xl, y, x_end - xl, h, 2);
+            cine_ui_draw_selection_bar(xl, y, x_end - xl, h, color_right, 1);
+        }
+        else
+        {
+            selection_bar_backend(color_left, COLOR_BLACK, xl, y, xc-xl, h-1);
+            selection_bar_backend(color_right, COLOR_BLACK, xc, y, x_end-xc, h-1);
+        }
         
         // use a pickbox if possible
         if (edit_mode && CAN_HAVE_PICKBOX(entry))
@@ -4363,9 +4374,17 @@ submenu_display(struct menu *submenu)
     {
         w = 720 - 2 * bx;
         int header_accent = cinema_os_enabled()
-            ? CINE_COLOR_CINEMA
+            ? cine_ui_menu_accent(submenu)
             : (menu_cine_colors ? menu_category_color_from_menu(submenu) : MENU_BAR_COLOR);
-        int header_bg = cinema_os_enabled() ? COLOR_BLACK : MENU_BG_COLOR_HEADER_FOOTER;
+        int header_bg = cinema_os_enabled() ? COLOR_GRAY(15) : MENU_BG_COLOR_HEADER_FOOTER;
+
+        if (cinema_os_enabled())
+        {
+            cine_ui_draw_submenu_frame(bx, by, w, h, header_accent, submenu->name);
+            submenu_key_hint(720 - bx - 45, by + 14, COLOR_WHITE, COLOR_GRAY(15), ICON_ML_Q_BACK);
+        }
+        else
+        {
         bmp_fill(header_bg,  bx,  by, w, 40);
         if (menu_cine_colors || cinema_os_enabled())
             bmp_fill(header_accent, bx, by, cinema_os_enabled() ? w : 5, cinema_os_enabled() ? 4 : 40);
@@ -4374,6 +4393,9 @@ submenu_display(struct menu *submenu)
 
         for (int i = 0; i < 5; i++)
             bmp_draw_rect(cinema_os_enabled() ? COLOR_ORANGE : 45,  bx - i,  by - i, w + i * 2, h + i * 2);
+
+        submenu_key_hint(720 - bx - 45, by + 5, COLOR_WHITE, MENU_BG_COLOR_HEADER_FOOTER, ICON_ML_Q_BACK);
+        }
 
 /* gradient experiments
         for (int i = 0; i < 3; i++)
@@ -4388,8 +4410,6 @@ submenu_display(struct menu *submenu)
         for (int i = 10; i < 15; i++)
             bmp_draw_rect(COLOR_BLACK,  bx-i,  by-i, w+i*2, h+i*2);
 */            
-
-        submenu_key_hint(720 - bx - 45, by + 5, COLOR_WHITE, MENU_BG_COLOR_HEADER_FOOTER, ICON_ML_Q_BACK);
     }
                                                    /* titlebar + padding difference for large submenus */
     menu_display(submenu,  bx + SUBMENU_OFFSET,  by + 40 + (count > 7 ? 10 : 25), edit_mode ? 1 : 0);
@@ -5878,7 +5898,7 @@ static void menu_close()
     if (cinema_os_enabled())
     {
         cinema_write_arm_hacks();
-        cinema_write_apply_best_profile();
+        /* keep CINE panel settings — do not overwrite with auto-profile */
     }
 
     customize_mode = 0;

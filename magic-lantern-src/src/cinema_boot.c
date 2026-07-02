@@ -14,6 +14,7 @@
 #include "menu.h"
 #include "cinema_boot.h"
 #include "cinema_write_engine.h"
+#include "cinema_record_apply.h"
 
 static CONFIG_INT("cinema.boot.done", cinema_boot_done, 0);
 
@@ -137,6 +138,9 @@ static void cinema_boot_run_wizard(void)
 
     boot_step(75, "Calibrating MLV profile for your card...", 400);
     cinema_write_apply_best_profile();
+
+    boot_step(85, "Arming MLV recording engine...", 400);
+    cinema_record_apply_full();
 
     boot_step(90, "Saving configuration...", 300);
     cinema_boot_done = 1;
