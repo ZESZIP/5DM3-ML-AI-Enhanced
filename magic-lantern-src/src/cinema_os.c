@@ -12,10 +12,10 @@
 #include "propvalues.h"
 #include "property.h"
 #include "picstyle.h"
-#include "menuhelp.h"
 #include "cinema_governor.h"
 #include "cinema_write_engine.h"
 #include "cinema_boot.h"
+#include "cinema_panels.h"
 #include "gui.h"
 
 static CONFIG_INT("cinema.os", cinema_os, 1);
@@ -65,11 +65,6 @@ static const char * row_abbr[CINE_ROW_COUNT] = {
 static const char * row_titles[CINE_ROW_COUNT] = {
     "RESOLUTION", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
     "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "AUDIO MONITOR"
-};
-
-static const char * row_goto[CINE_ROW_COUNT] = {
-    "Cinema Record", "FPS override", "Raw video", "Picture Style",
-    "Expo. Override", "Expo. Override", "Expo. Override", "White balance", "Audio levels"
 };
 
 int cinema_os_enabled(void) { return cinema_os; }
@@ -139,7 +134,7 @@ void cinema_os_draw_status_footer(void)
     bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
     bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 12, foot_y + 4, "CINE AI ENHANCED");
     bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 12, foot_y + 24,
-        "Branch of Magic Lantern  |  Wheel L/R pages  Up/Dn select");
+        "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
 
     if (cinema_os_uses_cinematic_canvas())
     {
@@ -382,19 +377,25 @@ int cinema_os_draw_cinematic_page(int list_y)
 
     cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll);
 
+    if (cinema_panel_is_open())
+        cinema_panel_draw(row_y0, body_h);
+
     return 1;
 }
 
 static void cine_row_open(int row)
 {
     if (row < 0 || row >= CINE_ROW_COUNT) return;
-    menu_help_go_to_label((void *) row_goto[row], 0);
+    cinema_panel_open(row);
 }
 
 int cinema_os_handle_key(unsigned int key)
 {
     if (!cinema_os_enabled()) return 0;
     if (!cinema_os_uses_cinematic_canvas()) return 0;
+
+    if (cinema_panel_is_open())
+        return cinema_panel_handle_key(key);
 
     switch (key)
     {
