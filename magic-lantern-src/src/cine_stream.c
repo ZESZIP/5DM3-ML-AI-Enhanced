@@ -1,6 +1,6 @@
 /** \file
- * CIX — direct-to-card CINEPACK stream (bypasses RAM frame ring).
- * PC tool rewrites to standard MLV.
+ * CSP — direct-to-card CINEPACK stream (bypasses RAM frame ring).
+ * PC: tools/cinepack_to_mlv.py → MLV or ProRes.
  */
 #include "dryos.h"
 #include "fio-ml.h"
@@ -8,19 +8,19 @@
 #include "cine_codec.h"
 #include "cinema_debug.h"
 
-#define CIX_HDR_SIZE 128
+#define CSP_HDR_SIZE 128
 
-static FILE * cix_file = 0;
-static int cix_w = 0;
-static int cix_h = 0;
-static int cix_fps = 0;
-static int cix_bpp = 14;
-static int cix_frames = 0;
-static int64_t cix_bytes = 0;
-static int cix_active = 0;
+static FILE * csp_file = 0;
+static int csp_w = 0;
+static int csp_h = 0;
+static int csp_fps = 0;
+static int csp_bpp = 14;
+static int csp_frames = 0;
+static int64_t csp_bytes = 0;
+static int csp_active = 0;
 
-int cine_stream_frame_count(void) { return cix_frames; }
-int64_t cine_stream_bytes_written(void) { return cix_bytes; }
+int cine_stream_frame_count(void) { return csp_frames; }
+int64_t cine_stream_bytes_written(void) { return csp_bytes; }
 
 #pragma pack(push,1)
 typedef struct {
@@ -30,38 +30,40 @@ typedef struct {
     uint16_t height;
     uint32_t fps_x1000;
     uint8_t  bpp;
-    uint8_t  codec;      /* 2 = CINEPACK v2 */
+    uint8_t  codec;
     uint16_t target_centi_mbs;
     uint32_t frame_count;
     uint8_t  reserved[100];
-} cix_file_hdr_t;
+} csp_file_hdr_t;
 
 typedef struct {
     uint32_t magic;
     uint32_t payload_size;
     uint32_t frame_number;
     uint32_t reserved;
-} cix_frame_hdr_t;
+} csp_frame_hdr_t;
 #pragma pack(pop)
 
-int cine_stream_active(void) { return cix_active && cix_file; }
+int cine_stream_active(void) { return csp_active && csp_file; }
 
 int cine_stream_begin_file(void * file, int width, int height, int fps_x1000, int bpp)
 {
     if (!file) return 0;
-    cix_file = (FILE *) file;
-    cix_w = width;
-    cix_h = height;
-    cix_fps = fps_x1000;
-    cix_bpp = bpp;
-    cix_frames = 0;
-    cix_bytes = sizeof(cix_file_hdr_t);
-    cix_active = 1;
+    csp_file = (FILE *) file;
+    csp_w = width;
+    csp_h = height;
+    csp_fps = fps_x1000;
+    csp_bpp = bpp;
+    csp_frames = 0;
+    csp_bytes = sizeof(csp_file_hdr_t);
+    csp_active = 1;
 
-    cix_file_hdr_t hdr;
+    cine_codec_reset_governor();
+
+    csp_file_hdr_t hdr;
     memset(&hdr, 0, sizeof(hdr));
-    hdr.magic = CIX_MAGIC;
-    hdr.version = 1;
+    hdr.magic = CSP_MAGIC;
+    hdr.version = 2;
     hdr.width = (uint16_t) width;
     hdr.height = (uint16_t) height;
     hdr.fps_x1000 = (uint32_t) fps_x1000;
@@ -69,14 +71,14 @@ int cine_stream_begin_file(void * file, int width, int height, int fps_x1000, in
     hdr.codec = CINEPACK_VERSION;
     hdr.target_centi_mbs = (uint16_t) cine_codec_target_centimbs();
 
-    if (FIO_WriteFile(cix_file, &hdr, sizeof(hdr)) != sizeof(hdr))
+    if (FIO_WriteFile(csp_file, &hdr, sizeof(hdr)) != sizeof(hdr))
     {
-        cine_debug_log("CIX header write failed");
-        cix_active = 0;
+        cine_debug_log("CSP header write failed");
+        csp_active = 0;
         return 0;
     }
 
-    cine_debug_log("CIX stream start %dx%d fps=%d target=%d cMB/s",
+    cine_debug_log("CSP stream start %dx%d fps=%d target=%d cMB/s",
         width, height, fps_x1000, hdr.target_centi_mbs);
     return 1;
 }
@@ -86,51 +88,53 @@ int cine_stream_write_frame(const void * payload, int size, int frame_num)
     if (!cine_stream_active() || !payload || size <= 0)
         return 0;
 
-    cix_frame_hdr_t fh;
-    fh.magic = CIX_FRAME_MAGIC;
+    csp_frame_hdr_t fh;
+    fh.magic = CSP_FRAME_MAGIC;
     fh.payload_size = (uint32_t) size;
     fh.frame_number = (uint32_t) frame_num;
     fh.reserved = 0;
 
-    if (FIO_WriteFile(cix_file, &fh, sizeof(fh)) != sizeof(fh))
+    if (FIO_WriteFile(csp_file, &fh, sizeof(fh)) != sizeof(fh))
         goto fail;
-    if (FIO_WriteFile(cix_file, payload, size) != (uint32_t) size)
+    if (FIO_WriteFile(csp_file, payload, size) != (uint32_t) size)
         goto fail;
 
-    cix_frames++;
-    cix_bytes += (int64_t) sizeof(fh) + size;
+    csp_frames++;
+    csp_bytes += (int64_t) sizeof(fh) + size;
 
-    if ((cix_frames % 24) == 0)
-        FIO_SeekSkipFile(cix_file, 0, SEEK_CUR);
+    if ((csp_frames % 12) == 0)
+        FIO_SeekSkipFile(csp_file, 0, SEEK_CUR);
 
     return 1;
 
 fail:
-    cine_debug_log("CIX frame %d write fail", frame_num);
+    cine_debug_log("CSP frame %d write fail", frame_num);
     return 0;
 }
 
 void cine_stream_end(void)
 {
-    if (!cix_file) return;
+    if (!csp_file) return;
 
-    if (cix_active)
+    if (csp_active)
     {
-        cix_file_hdr_t hdr;
+        csp_file_hdr_t hdr;
         memset(&hdr, 0, sizeof(hdr));
-        hdr.magic = CIX_MAGIC;
-        hdr.version = 1;
-        hdr.width = (uint16_t) cix_w;
-        hdr.height = (uint16_t) cix_h;
-        hdr.fps_x1000 = (uint32_t) cix_fps;
-        hdr.bpp = (uint8_t) cix_bpp;
+        hdr.magic = CSP_MAGIC;
+        hdr.version = 2;
+        hdr.width = (uint16_t) csp_w;
+        hdr.height = (uint16_t) csp_h;
+        hdr.fps_x1000 = (uint32_t) csp_fps;
+        hdr.bpp = (uint8_t) csp_bpp;
         hdr.codec = CINEPACK_VERSION;
-        hdr.frame_count = (uint32_t) cix_frames;
-        FIO_SeekSkipFile(cix_file, 0, SEEK_SET);
-        FIO_WriteFile(cix_file, &hdr, sizeof(hdr));
-        cine_debug_log("CIX stream end frames=%d", cix_frames);
+        hdr.target_centi_mbs = (uint16_t) cine_codec_target_centimbs();
+        hdr.frame_count = (uint32_t) csp_frames;
+        FIO_SeekSkipFile(csp_file, 0, SEEK_SET);
+        FIO_WriteFile(csp_file, &hdr, sizeof(hdr));
+        cine_debug_log("CSP stream end frames=%d bytes=%d rolling=%d cMB/s",
+            csp_frames, (int) csp_bytes, cine_codec_rolling_centimbs());
     }
 
-    cix_active = 0;
-    cix_file = 0;
+    csp_active = 0;
+    csp_file = 0;
 }

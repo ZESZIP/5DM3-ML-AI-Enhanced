@@ -26,6 +26,7 @@
 #define CINE_ICON_AUDIO       ICON_ML_AUDIO
 #define CINE_ICON_SENSOR      ICON_ML_OVERLAY
 #define CINE_ICON_BEAST       ICON_ML_MOVIE
+#define CINE_ICON_LV          ICON_ML_DISPLAY
 
 #define CINE_NAV_H           56
 #define CINE_SUBHEADER_H     40
@@ -75,6 +76,7 @@ void cinema_os_get_entry_colors(
 
 /* Returns 1 if key consumed. Called from menu.c */
 int cinema_os_handle_key(unsigned int key);
+int cinema_os_handle_lr_key(int delta);
 
 /* menu.c: sync ML top-level tab when page changes */
 const char * cinema_os_page_menu_name(cinema_os_page_t page);

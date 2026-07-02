@@ -15,6 +15,7 @@ void cinema_record_set_fps(int fps_idx);
 void cinema_record_set_format_idx(int fmt_idx);
 void cinema_record_set_sensor_pct(int pct);
 void cinema_record_set_lv_pct(int pct);
+int cinema_record_lv_pct(void);
 
 int cinema_record_format_is_cinepack(void);
 int cinema_record_apply_full(void);

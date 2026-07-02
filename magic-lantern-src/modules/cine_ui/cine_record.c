@@ -282,7 +282,7 @@ static int cine_apply_settings(void)
     msleep(300);
     NotifyBoxHide();
     beep();
-    NotifyBox(3500, "CINEPACK armed\nREC writes .CIX to card.");
+    NotifyBox(3500, "CINEPACK armed\nREC writes .CSP to card.");
 
     cine_last_apply_ms = get_ms_clock();
     return 1;
@@ -338,7 +338,7 @@ static void cine_draw_screen(void)
     if (get_config_var("raw.video.enabled"))
     {
         if (cine_fmt_idx == 1)
-            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 8, "CIX ARMED");
+            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 8, "CSP ARMED");
         else
             bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 560, foot_y + 8, "ARMED");
     }
@@ -437,7 +437,7 @@ static struct menu_entry cine_record_menu[] =
         .icon_type = IT_ACTION,
         .depends_on = DEP_LIVEVIEW | DEP_MOVIE_MODE,
         .help = "Sony-style scroll UI: resolution, aspect, codec, FPS.",
-        .help2 = "MOV = Canon H.264. CINEPACK Stream Pro writes .CIX\n"
+        .help2 = "MOV = Canon H.264. CINEPACK Stream Pro writes .CSP\n"
                   "straight to card (convert to MLV on PC).",
     },
 };
