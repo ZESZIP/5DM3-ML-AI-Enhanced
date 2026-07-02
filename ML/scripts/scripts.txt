@@ -1,1 +1,4 @@
 here we store all scripts being used.
+
+power_suite.lua - 5D3 Power Suite (autorun recommended)
+  Optimized live view scaling, power-through recording, and high FPS presets.

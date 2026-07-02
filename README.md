@@ -203,3 +203,70 @@ the specific MLV format used requiring some more post-processing to be usable: a
 Cinema DNG conversion can be performed using a batch converter, via the MLVApp software or via the MLVFS tool (creating some kind of virtual drive doing live conversions of MLV to DNG files).
 
 One common habit with MLV to reduce the data size amount and go back to a more comfortable workflow is to perform a pre-grade operation over the MLV file (right after the debayering process) in order to optimize the image features (contrast, sharpness, color balance, noise reduction etc.), then encode the output using a more regular high-end video format like Apple ProRes 444, using optionally the dedicated ML Log profile to increase the dynamic range (see before), then you can easily ingest and work with this intermediate high-quality output.
+
+---
+
+## 5D3 Power Suite (2026 workflow)
+
+This card includes a Lua-based optimization layer for the Canon 5D Mark III. It uses Magic Lantern's existing APIs only — no firmware recompilation required. Copy the card to your camera, enable the script, and shoot.
+
+### Install (no ethernet required)
+
+1. Copy the entire `ML` folder and `autoexec.bin` to your bootable CF/SD card.
+2. Boot the camera with Magic Lantern as usual.
+3. Open **ML menu → Scripts → power_suite → Autorun → ON**.
+4. Reboot once (or reload ML) so the suite starts automatically.
+
+### Menu location
+
+**ML menu → Movie → 5D3 Power Suite**
+
+| Section | Purpose |
+|---------|---------|
+| **Live View** | Dial preview load from 25%–100%. Lower % disables overlays and throttles preview to free CPU for raw recording. |
+| **Power Through** | Prevents auto power-off during recording. Overrides ML powersave and keeps LiveView active. Pull the battery if the body gets too hot. |
+| **High FPS** | Extends FPS override up to 120fps (experimental above 60fps). 60fps is stable in crop modes. |
+| **Perf Presets** | One-tap profiles: 4K Raw Stable, 1080p Smooth, Slo-Mo 60, Ultra 120. |
+
+### Quick controls
+
+- **INFO** (in Movie mode, outside menu): toggle Power Through on/off.
+- **HUD bar** (bottom of LiveView): shows `REC/STBY`, power state, live view %, FPS, and estimated MB/s.
+
+### Recommended Canon settings
+
+- Set **Auto power off → Disable** in the Canon menu (required for Power Through to work reliably).
+- Use **720p 50/60fps** Canon video mode for Slo-Mo 60 preset.
+- For 4K raw, enable **Crop mode** and use the 4K Raw Stable preset with fast CF + SD card spanning.
+
+### Live View resolution %
+
+The percentage controls **preview processing cost**, not necessarily the recorded MLV resolution:
+
+- **100%** — full overlays, full preview refresh.
+- **75%** — disables zebras, focus peaking, false color.
+- **50%** — disables Global Draw and all ML overlays.
+- **33% / 25%** — additionally pauses LiveView between frames when idle (not while recording).
+
+When **Scale Crop YRES** is enabled and Crop mode is active, the suite also scales the Crop mode **Target YRES** value proportionally.
+
+### High FPS notes (5D3 hardware limits)
+
+| FPS | Expectation |
+|-----|-------------|
+| 24–30 | Cinema / standard |
+| 48–50 | PAL overcrank |
+| 60 | Stable in 1920×800 / 1920×960 crop modes |
+| 72–96 | Experimental, short bursts |
+| 120 | Maximum attempt; often &lt;1s record time |
+
+Bandwidth estimate (from the formula above):
+
+`(Width × Height × FPS × BitDepth) / (8 × Compression × 1024 × 1024)` MB/s
+
+Target **&lt;145 MB/s** on 5D3 with card spanning for stable 4K raw.
+
+### Safety
+
+Power Through intentionally overrides thermal and auto-off safeguards. The camera may run hot during long takes. **Remove the battery** if the body becomes uncomfortably warm. This is by design for uninterrupted takes.
+
