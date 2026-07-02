@@ -22,7 +22,7 @@ ML/          (entire folder)
 5. Reboot. Enter LiveView. You should see:
    - Popup: **"CINEMA OS 2026"**
    - LiveView bar tag: **AI-CINEMA** (orange)
-6. Press **Delete** → **Cinema OS** opens with colored tab bar → **CINE** tab (orange) → **Cinema Record**
+6. Press **Delete** → five-page **Cinema OS** nav bar → **CINEMATIC** (orange) page
 
 ## Verify correct build
 
@@ -40,12 +40,19 @@ Press Delete → **Help** tab. Version must contain **`CINEMA.OS.2026.5D3`**.
 
 ## Cinema OS (Delete menu)
 
-When **Display → Cinema UI → Cinema OS shell** is ON (default):
+Five operational pages on a black nav bar (wheel left/right to switch):
 
-- **Colored tab bar** with big ML icons and short labels (CINE, SHOOT, EXPO, …)
-- **CINE tab** = full orange workspace, white bold menu text
-- Taller rows, modern selection bars per category color
-- Classic ML menus still underneath — nothing removed
+| Tab | Color | Purpose |
+|-----|-------|---------|
+| SETTINGS | Yellow | Prefs |
+| PHOTO | Green | Shoot |
+| **CINEMATIC** | **Orange** | Recording sensing / settings list |
+| ADD-ONS | Blue | Modules |
+| HACKS | Purple | Debug |
+
+**CINEMATIC page** — full orange canvas, 9 scrollable rows (resolution, FPS, format, gamma, shutter, aperture, ISO, WB, audio). SET opens the linked ML control. **CODEC/FORMAT** shows live MLV depth; adapts automatically under card pressure via the buffer governor.
+
+Toggle shell: `Display → Cinema UI → Cinema OS shell` (ON by default).
 
 ## Cinema Record (main recorder)
 

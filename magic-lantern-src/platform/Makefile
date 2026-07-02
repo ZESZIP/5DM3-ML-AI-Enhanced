@@ -323,6 +323,7 @@ ML_SRC_OBJS_00 = \
     edmac.o \
     menu.o \
     cinema_os.o \
+    cinema_governor.o \
     debug.o \
     rand.o \
     posix.o \

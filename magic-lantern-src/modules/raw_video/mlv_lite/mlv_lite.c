@@ -72,6 +72,7 @@
 #include "powersave.h"
 #include "shoot.h"
 #include "fileprefix.h"
+#include "../../../src/cinema_governor.h"
 #include "timer.h"
 #include "ml-cbr.h"
 #include "../../silent/lossless.h"
@@ -1919,6 +1920,7 @@ void show_recording_status()
             measured_write_speed = speed;
             speed /= 10;
         }
+        cinema_governor_tick();
     }
 
     /* Determine if we should redraw */

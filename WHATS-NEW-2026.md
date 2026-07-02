@@ -9,7 +9,48 @@ source tree at commit `ed3e7c0d`. The full, buildable source (with our changes) 
 Install is unchanged: copy `autoexec.bin`, `ML-SETUP.FIR` and the `ML/` folder to your
 card root. No network, phone app, or PC tool required.
 
-## Phase 4: Cinema OS shell + BEAST power modes (this update)
+## Phase 5: Five-page Cinema OS UI + adaptive buffer governor
+
+### Global navigation (Delete menu)
+
+Persistent **matte black** top bar with five pages:
+
+| Page | Color | ML backend |
+|------|-------|------------|
+| **SETTINGS** | Yellow | Prefs |
+| **PHOTO** | Green | Shoot |
+| **CINEMATIC** | Orange | Movie |
+| **ADD-ONS** | Blue | Modules |
+| **HACKS** | Purple | Debug |
+
+Wheel **left/right** switches pages. Active tab shows colored underline.
+
+### CINEMATIC page (spec layout)
+
+Full **orange canvas** with scrollable recording rows:
+
+- RESOLUTION, FRAME RATE, CODEC/FORMAT, GAMMA CURVE
+- SHUTTER, APERTURE, ISO/GAIN, WHITE BALANCE, AUDIO MONITOR
+
+Each row: boxed abbreviation, `TITLE | live value`, chevron. White selection pill.
+Right-edge scrollbar. **SET** opens the linked ML submenu.
+
+### Dynamic data-rate governor
+
+When recording **4K 14-bit MLV**, monitors CF write speed (`raw.write.speed`).
+If throughput drops below sustained threshold, recording **continues** and format
+adapts automatically:
+
+1. 14-bit native → **14-bit LJ92**
+2. Still underrun → **12-bit LJ92**
+
+The **CODEC/FORMAT** row updates live (e.g. `12-bit MLV RAW (adaptive)`).
+
+*Files: `cinema_os.c`, `cinema_governor.c`, `menu.c`, `mlv_lite.c`*
+
+---
+
+## Phase 4: Cinema OS shell + BEAST power modes
 
 ### Cinema OS — your own menu on top of ML
 
