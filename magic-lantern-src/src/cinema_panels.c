@@ -25,13 +25,10 @@ static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K UHD", "6K" }
 static const char * fps_opts[]     = { "24 fps", "25 fps", "50 fps", "60 fps", "100 fps", "120 fps" };
 static const char * fmt_opts[] = {
     "MOV (Canon H.264)",
-    "MLV 14-bit",
-    "MLV 12-bit",
-    "MLV 10-bit",
-    "MLV LJ92 14-bit",
-    "MLV LJ92 12-bit",
     "CINEPACK Stream Pro"
 };
+
+static const int fmt_icons[] = { CINE_ICON_MOV, CINE_ICON_CINEPACK };
 
 static const char * sensor_opts[] = { "Sensor 100%", "Sensor 75%", "Sensor 50%", "Sensor 25%" };
 static const int    sensor_vals[]  = { 100, 75, 50, 25 };
@@ -39,14 +36,36 @@ static const char * lv_opts[]     = { "LV preview 100%", "LV preview 75%", "LV p
 static const int    lv_vals[]     = { 100, 75, 50, 25 };
 
 static const int row_icons[] = {
-    ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
-    ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_SHOOT, ICON_ML_AUDIO
+    CINE_ICON_RES, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
 };
 
 static CONFIG_INT("cine.rec.beast", cine_beast, 0);
 static CONFIG_INT("cine.rec.res", cine_res, 1);
 static CONFIG_INT("cine.rec.fps", cine_fps, 1);
-static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 5);
+static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 1);
+
+static int panel_option_icon(int row, int opt)
+{
+    switch (row)
+    {
+        case 0:
+            if (opt < COUNT(beast_labels)) return CINE_ICON_BEAST;
+            if (opt < COUNT(beast_labels) + COUNT(res_labels)) return CINE_ICON_RES;
+            if (opt < COUNT(beast_labels) + COUNT(res_labels) + COUNT(sensor_opts))
+                return CINE_ICON_SENSOR;
+            return CINE_ICON_RES;
+        case 1: return CINE_ICON_FPS;
+        case 2: return (opt >= 0 && opt < COUNT(fmt_icons)) ? fmt_icons[opt] : CINE_ICON_CODEC;
+        case 3: return CINE_ICON_GAMMA;
+        case 4: return CINE_ICON_SHUTTER;
+        case 5: return CINE_ICON_APERTURE;
+        case 6: return CINE_ICON_ISO;
+        case 7: return CINE_ICON_WB;
+        case 8: return CINE_ICON_AUDIO;
+        default: return ICON_ML_INFO;
+    }
+}
 
 static int panel_option_count(int row)
 {
@@ -73,7 +92,10 @@ static void panel_sync_sel(int row)
             panel_sel = cine_beast ? (cine_beast - 1) : (COUNT(beast_labels) + cine_res);
             break;
         case 1: panel_sel = cine_fps; break;
-        case 2: panel_sel = cine_fmt_idx; break;
+        case 2:
+            panel_sel = COERCE(cine_fmt_idx, 0, COUNT(fmt_opts) - 1);
+            if (panel_sel > 1) panel_sel = 1;
+            break;
         case 3: panel_sel = COERCE(lens_info.picstyle - 1, 0, 6); break;
         case 4: panel_sel = 2; break;
         case 5: panel_sel = 0; break;
@@ -280,9 +302,10 @@ void cinema_panel_draw(int y0, int body_h)
         int sel = (opt == panel_sel);
         char label[64];
         panel_get_label(panel_row, opt, label, sizeof(label));
+        int icon = panel_option_icon(panel_row, opt);
 
         cine_ui_draw_row_card(px + 16, ry, pw - 32, row_h - 6, CINE_COLOR_CINEMA, sel);
-        bfnt_draw_char(row_icons[panel_row], px + 28, ry + 10,
+        bfnt_draw_char(icon, px + 28, ry + 10,
             sel ? CINE_COLOR_CINEMA : COLOR_WHITE, sel ? COLOR_BLACK : CINE_COLOR_CINEMA);
         int fg = sel ? CINE_COLOR_CINEMA : COLOR_WHITE;
         int bg = sel ? COLOR_BLACK : CINE_COLOR_CINEMA;

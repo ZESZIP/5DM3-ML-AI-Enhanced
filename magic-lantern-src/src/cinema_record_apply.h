@@ -16,6 +16,7 @@ void cinema_record_set_format_idx(int fmt_idx);
 void cinema_record_set_sensor_pct(int pct);
 void cinema_record_set_lv_pct(int pct);
 
+int cinema_record_format_is_cinepack(void);
 int cinema_record_apply_full(void);
 int cinema_record_mlv_armed(void);
 const char * cinema_record_container_label(void);

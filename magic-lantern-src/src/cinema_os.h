@@ -12,6 +12,21 @@
 #define CINE_COLOR_ADDONS    COLOR_LIGHT_BLUE   /* #00A2FF */
 #define CINE_COLOR_HACKS     COLOR_MAGENTA      /* #A55EEA */
 
+/* Feature icons for CINE rows and codec picker */
+#define CINE_ICON_MOV         ICON_ML_MOVIE
+#define CINE_ICON_CINEPACK    ICON_ML_OVERLAY
+#define CINE_ICON_RES         ICON_ML_DISPLAY
+#define CINE_ICON_FPS         ICON_ML_MOVIE
+#define CINE_ICON_CODEC       ICON_ML_OVERLAY
+#define CINE_ICON_GAMMA       ICON_ML_SHOOT
+#define CINE_ICON_SHUTTER     ICON_ML_EXPO
+#define CINE_ICON_APERTURE    ICON_ML_FOCUS
+#define CINE_ICON_ISO         ICON_ML_EXPO
+#define CINE_ICON_WB          ICON_ML_SHOOT
+#define CINE_ICON_AUDIO       ICON_ML_AUDIO
+#define CINE_ICON_SENSOR      ICON_ML_OVERLAY
+#define CINE_ICON_BEAST       ICON_ML_MOVIE
+
 #define CINE_NAV_H           56
 #define CINE_SUBHEADER_H     40
 #define CINE_ROW_H           56

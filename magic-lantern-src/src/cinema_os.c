@@ -61,8 +61,8 @@ enum {
 };
 
 static const int row_icons[CINE_ROW_COUNT] = {
-    ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_MOVIE, ICON_ML_SHOOT,
-    ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_EXPO, ICON_ML_SHOOT, ICON_ML_AUDIO
+    CINE_ICON_RES, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
@@ -148,7 +148,12 @@ void cinema_os_draw_status_footer(void)
             "PROFILE: %s", cinema_write_profile_label());
 
         if (cinema_record_mlv_armed())
-            bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "MLV ARMED");
+        {
+            if (cinema_record_format_is_cinepack())
+                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 500, foot_y + 4, "CIX ARMED");
+            else
+                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "RAW ARMED");
+        }
         else
             bmp_printf(FONT(FONT_MED, COLOR_LIGHT_BLUE, COLOR_BLACK), 520, foot_y + 4, "MOV MODE");
 
