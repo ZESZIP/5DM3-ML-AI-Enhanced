@@ -295,6 +295,10 @@ const char* module_get_string(int mod_number, const char* name);
 int module_get_number(const char *name);
 const char* module_get_name(int mod_number);
 
+/* Cine AI Enhanced — bulk enable + debug snapshot */
+int module_enable_all_flagfiles(void);
+void module_cine_debug_log(void (*log_fn)(const char *fmt, ...));
+
 /* execute all callback routines of given type. maybe it will get extended to support varargs */
 int module_exec_cbr(unsigned int type);
 

@@ -135,10 +135,9 @@ void cinema_os_draw_status_footer(void)
 
     int foot_y = 432;
     int page_c = cinema_os_page_color(cinema_os_active_page());
-    bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
-    bmp_fill(page_c, 0, foot_y, 720, 3);
-    bmp_printf(FONT(FONT_MED, page_c, COLOR_BLACK), 12, foot_y + 4, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 12, foot_y + 24,
+    cine_ui_draw_hd_panel(0, foot_y, 720, 48, page_c);
+    bmp_printf(FONT(FONT_MED, page_c, COLOR_GRAY(14)), 16, foot_y + 6, "CINE AI ENHANCED");
+    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_GRAY(14)), 16, foot_y + 26,
         "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
 
     if (cinema_os_uses_cinematic_canvas())
@@ -264,7 +263,8 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 void cinema_os_draw_nav_bar(int y)
 {
     int bar_h = CINE_NAV_H;
-    bmp_fill(COLOR_BLACK, 0, y, 720, bar_h);
+    bmp_fill(COLOR_GRAY(4), 0, y, 720, bar_h);
+    bmp_fill(COLOR_GRAY(8), 0, y + bar_h - 2, 720, 2);
 
     int tile_w = 720 / CINE_PAGE_COUNT;
     cinema_os_page_t active = cinema_os_active_page();
@@ -274,47 +274,25 @@ void cinema_os_draw_nav_bar(int y)
         int x = i * tile_w;
         int color = page_colors[i];
         int sel = (i == (int) active);
-        int fg = sel ? color : COLOR_GRAY(55);
-        int icon = page_icons[i];
-
-        bfnt_draw_char(icon, x + 10, y + 6, fg, NO_BG_ERASE);
-
-        int lfnt = FONT(FONT_LARGE, fg, COLOR_BLACK);
-        int lx = x + 42;
-        if (lx + bmp_string_width(lfnt, page_labels[i]) > x + tile_w - 4)
-            lfnt = FONT(FONT_MED, fg, COLOR_BLACK);
-        bmp_printf(lfnt, lx, y + bar_h - font_large.height - 8, "%s", page_labels[i]);
-
-        if (sel)
-        {
-            draw_line(x + 4, y + bar_h - 4, x + tile_w - 4, y + bar_h - 4, color);
-            draw_line(x + 4, y + bar_h - 3, x + tile_w - 4, y + bar_h - 3, color);
-            draw_line(x + 4, y + bar_h - 2, x + tile_w - 4, y + bar_h - 2, color);
-        }
+        cine_ui_draw_hd_nav_tab(x, y, tile_w, bar_h, color, sel, page_labels[i], page_icons[i]);
     }
 }
 
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
 {
     int c = cinema_os_page_color(page);
-    int dark = COLOR_GRAY(12);
 
     if (page == CINE_PAGE_CINEMATIC)
     {
-        bmp_fill(c, 0, y0, 720, h);
-        bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, c),
-            16, y0 + 8,
+        cine_ui_draw_hd_page_bg(c, y0, h);
+        bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, COLOR_GRAY(14)),
+            28, y0 + 22,
             "CINE MODE | RECORD SENSING / SETTINGS");
     }
     else
     {
-        bmp_fill(dark, 0, y0, 720, h);
-        bmp_fill(c, 0, y0, 12, h);
-        bmp_fill(c, 0, y0, 720, 4);
-        cine_ui_draw_shadow(16, y0 + 12, 688, h - 24, 3);
-        bmp_fill(COLOR_GRAY(16), 16, y0 + 12, 688, h - 24);
-        bmp_draw_rect(c, 16, y0 + 12, 688, h - 24);
-        bmp_printf(FONT(FONT_MED, c, COLOR_GRAY(16)), 28, y0 + 18, "%s", page_labels[page]);
+        cine_ui_draw_hd_page_bg(c, y0, h);
+        bmp_printf(FONT(FONT_MED, c, COLOR_GRAY(14)), 28, y0 + 22, "%s", page_labels[page]);
     }
 }
 

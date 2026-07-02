@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include "module.h"
 #include "cinema_module_bridge.h"
+#include "cinema_debug.h"
 
 static int bridge_exec(const char * sym, int argc, ...)
 {
@@ -27,6 +28,8 @@ static int bridge_exec(const char * sym, int argc, ...)
     }
 
     va_end(args);
+    if (ret <= 0)
+        cine_debug_log("module_exec %s argc=%d ret=%d", sym, argc, ret);
     return ret;
 }
 

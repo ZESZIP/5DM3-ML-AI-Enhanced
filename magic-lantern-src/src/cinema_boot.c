@@ -15,8 +15,13 @@
 #include "cinema_boot.h"
 #include "cinema_write_engine.h"
 #include "cinema_record_apply.h"
+#include "cinema_debug.h"
+#include "cinema_ui_theme.h"
+#include "module.h"
+#include "property.h"
 
 static CONFIG_INT("cinema.boot.done", cinema_boot_done, 0);
+static CONFIG_INT("cinema.modules.ready", cinema_modules_ready, 0);
 
 static int wizard_active = 0;
 static int menu_splash_until = 0;
@@ -32,37 +37,34 @@ int cinema_boot_wizard_active(void) { return wizard_active; }
 
 static void boot_draw_frame(int pct, const char * step)
 {
-    bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
+    cine_ui_draw_hd_page_bg(COLOR_ORANGE, 0, 480);
 
     bfnt_draw_char(ICON_ML_MOVIE, 320, 72, COLOR_ORANGE, NO_BG_ERASE);
 
-    bmp_printf(FONT(FONT_CANON, COLOR_WHITE, COLOR_BLACK), 130, 130, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_MED, COLOR_GRAY(55), COLOR_BLACK), 95, 168,
+    bmp_printf(FONT(FONT_CANON, COLOR_WHITE, COLOR_GRAY(14)), 130, 130, "CINE AI ENHANCED");
+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(55), COLOR_GRAY(14)), 95, 168,
         "5D Mark III cinema recording OS");
 
-    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 40, 210, "%s", boot_hw_label);
-    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 40, 234, "%s", boot_card_label);
+    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_GRAY(14)), 40, 210, "%s", boot_hw_label);
+    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_GRAY(14)), 40, 234, "%s", boot_card_label);
 
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), 40, 280, "Setting up your camera...");
-    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_BLACK), 40, 308, "%s", step);
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_GRAY(14)), 40, 280, "Setting up your camera...");
+    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_GRAY(14)), 40, 308, "%s", step);
 
     int bar_x = 40;
     int bar_y = 340;
     int bar_w = 640;
     int bar_h = 32;
-    bmp_fill(COLOR_GRAY(20), bar_x, bar_y, bar_w, bar_h);
-    bmp_fill(COLOR_GRAY(35), bar_x + 2, bar_y + 2, bar_w - 4, bar_h - 4);
-    int fill = (bar_w - 4) * pct / 100;
+    cine_ui_draw_hd_panel(bar_x, bar_y, bar_w, bar_h, COLOR_ORANGE);
+    int fill = (bar_w - 12) * pct / 100;
     if (fill > 0)
-        bmp_fill(COLOR_ORANGE, bar_x + 2, bar_y + 2, fill, bar_h - 4);
-    bmp_draw_rect(COLOR_WHITE, bar_x, bar_y, bar_w, bar_h);
-    bmp_draw_rect(COLOR_ORANGE, bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2);
+        bmp_fill(COLOR_ORANGE, bar_x + 6, bar_y + 10, fill, bar_h - 20);
 
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), bar_x + bar_w - 64, bar_y + 6, "%d%%", pct);
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_GRAY(14)), bar_x + bar_w - 64, bar_y + 8, "%d%%", pct);
 
     if (pct >= 100)
     {
-        bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 40, 390,
+        bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_GRAY(14)), 40, 390,
             "Ready. Press DELETE to open Cine AI OS.");
     }
 }
@@ -117,10 +119,45 @@ static void boot_benchmark_with_progress(void)
     msleep(300);
 }
 
+static void cinema_request_reboot(const char * reason)
+{
+    boot_draw_frame(100, reason);
+    msleep(2000);
+    config_save();
+    cine_debug_flush();
+    int reboot = 0;
+    prop_request_change(PROP_REBOOT, &reboot, 4);
+    while (1) msleep(1000);
+}
+
+static int cinema_first_boot_enable_modules(void)
+{
+    wizard_active = 1;
+    menu_redraw_blocked = 1;
+    cine_debug_init();
+
+    boot_detect_hardware();
+    boot_step(8, "First launch: enabling all ML modules...", 500);
+
+    int n = module_enable_all_flagfiles();
+    cine_debug_log("enabled %d module .en flags", n);
+    module_cine_debug_log(cine_debug_log);
+
+    cinema_modules_ready = 1;
+    config_save();
+
+    boot_step(100, "Restarting camera to load modules...", 800);
+    cinema_request_reboot("Restarting to activate modules...");
+    return 1;
+}
+
 static void cinema_boot_run_wizard(void)
 {
     wizard_active = 1;
     menu_redraw_blocked = 1;
+    cine_debug_init();
+    cine_debug_log("wizard start modules_ready=%d", cinema_modules_ready);
+    cine_debug_log_modules();
 
     boot_detect_hardware();
     boot_step(5, "Scanning camera hardware...", 400);
@@ -140,11 +177,23 @@ static void cinema_boot_run_wizard(void)
     cinema_write_apply_best_profile();
 
     boot_step(85, "Arming MLV recording engine...", 400);
-    cinema_record_apply_full();
+    if (!cinema_record_apply_full())
+    {
+        cine_debug_log("MLV arm FAILED during wizard");
+        cine_debug_log_mlv_state();
+        cine_debug_flush();
+        boot_step(85, "MLV arm issue — see ML/LOGS/CINE_DEBUG.LOG", 1200);
+    }
+    else
+    {
+        cine_debug_log("MLV arm OK");
+        cine_debug_log_mlv_state();
+    }
 
     boot_step(90, "Saving configuration...", 300);
     cinema_boot_done = 1;
     config_save();
+    cine_debug_flush();
 
     boot_step(100, "Setup complete.", 2500);
 
@@ -170,6 +219,14 @@ static void cinema_boot_task(void * unused)
             msleep(500);
             wait++;
         }
+    }
+
+    if (!cinema_modules_ready)
+    {
+        canon_gui_disable_front_buffer(0);
+        clrscr();
+        cinema_first_boot_enable_modules();
+        return;
     }
 
     if (!cinema_boot_done)

@@ -2260,6 +2260,72 @@ int module_shutdown()
     return 0;
 }
 
+int module_enable_all_flagfiles(void)
+{
+    struct fio_file file;
+    struct fio_dirent * dirent = FIO_FindFirstEx(MODULE_PATH, &file);
+    int count = 0;
+
+    if (IS_ERROR(dirent))
+        return 0;
+
+    do
+    {
+        if (file.mode & ATTR_DIRECTORY)
+            continue;
+
+        if (!module_valid_filename(file.name))
+            continue;
+
+        char module_name[MODULE_FILENAME_LENGTH];
+        memset(module_name, 0, sizeof(module_name));
+        strncpy(module_name, file.name, MODULE_NAME_LENGTH);
+
+        uint32_t pos = 0;
+        while (module_name[pos])
+        {
+            if (module_name[pos] == '.')
+            {
+                module_name[pos] = '\000';
+                break;
+            }
+            if (module_name[pos] >= 'A' && module_name[pos] <= 'Z')
+                module_name[pos] |= 0x20;
+            pos++;
+        }
+
+        char enable_file[FIO_MAX_PATH_LENGTH];
+        snprintf(enable_file, sizeof(enable_file), "%s%s.en", get_config_dir(), module_name);
+        config_flag_file_setting_save(enable_file, 1);
+        count++;
+    }
+    while (FIO_FindNextEx(dirent, &file) == 0);
+
+    FIO_FindClose(dirent);
+    return count;
+}
+
+void module_cine_debug_log(void (*log_fn)(const char *fmt, ...))
+{
+    if (!log_fn) return;
+
+    for (int i = 0; i < MODULE_COUNT_MAX; i++)
+    {
+        if (!module_list[i].filename[0])
+            break;
+
+        log_fn("mod %-14s en=%d valid=%d err=%d st=%s",
+            module_list[i].name,
+            module_list[i].enabled,
+            module_list[i].valid,
+            module_list[i].error,
+            module_list[i].status);
+
+        if (module_list[i].long_status[0])
+            log_fn("  -> %s", module_list[i].long_status);
+    }
+}
+
 TASK_CREATE("module_task", module_load_task, 0, 0x1e, 0x4000 );
 
 INIT_FUNC(__FILE__, module_init);

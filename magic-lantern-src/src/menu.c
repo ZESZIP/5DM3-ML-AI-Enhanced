@@ -44,6 +44,7 @@
 #include "cinema_boot.h"
 #include "cinema_panels.h"
 #include "cinema_ui_theme.h"
+#include "cinema_debug.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -2769,6 +2770,22 @@ entry_print(
     int use_small_font = 0;
     int x_font_offset = 0;
     int y_font_offset = (h - (int)font_large.height) / 2;
+
+    if (cinema_os_enabled() && !menu_lv_transparent_mode && !junkie_mode)
+    {
+        int accent = cinema_os_page_color(cinema_os_active_page());
+        if (in_submenu)
+        {
+            struct menu * tab = entry->parent_menu;
+            while (tab && tab->parent_menu) tab = tab->parent_menu;
+            accent = cine_ui_menu_accent(tab);
+            cine_ui_draw_row_card(x - 10, y - 3, g_submenu_width - 24, h + 2, accent, entry->selected);
+        }
+        else if (!submenu_level)
+        {
+            cine_ui_draw_row_card(x - 10, y - 3, 700, h + 2, accent, entry->selected);
+        }
+    }
     
     int not_at_home = 
             !entry->parent_menu->selected &&     /* is it in some dynamic menu? (not in its original place) */
@@ -4319,6 +4336,9 @@ void menus_display(
 
     if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
         cinema_os_draw_status_footer();
+
+    if (cinema_os_enabled() && !junkie_mode)
+        cine_debug_draw_overlay();
 
     if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
         cinema_boot_draw_menu_splash();

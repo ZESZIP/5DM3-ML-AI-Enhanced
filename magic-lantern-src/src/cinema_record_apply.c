@@ -14,6 +14,7 @@
 #include "cinema_write_engine.h"
 #include "cinema_module_bridge.h"
 #include "cine_codec.h"
+#include "cinema_debug.h"
 
 static CONFIG_INT("cine.rec.res", cine_res, 1);
 static CONFIG_INT("cine.rec.fps", cine_fps, 1);
@@ -142,14 +143,18 @@ int cinema_record_mlv_armed(void)
 
 int cinema_record_apply_full(void)
 {
+    cine_debug_log("apply_full start");
+
     if (RECORDING)
     {
+        cine_debug_log("fail: recording active");
         NotifyBox(2500, "Stop recording first.");
         return 0;
     }
 
     if (!lv || !is_movie_mode())
     {
+        cine_debug_log("fail: lv=%d movie=%d", lv ? 1 : 0, is_movie_mode() ? 1 : 0);
         NotifyBox(3000, "Enter movie LiveView first.");
         return 0;
     }
@@ -198,14 +203,24 @@ int cinema_record_apply_full(void)
 
     gui_uilock(UILOCK_EVERYTHING);
 
+    cine_debug_log("crop=%d ro=%d res_x=%d fmt=%d prev=%d",
+        crop, ro_pct, res_x, fmt, preview_scale);
+
     if (!cinema_bridge_crop_apply(crop, ro_pct))
     {
+        cine_debug_log("crop bridge fail, fallback set_config");
         set_config_var("crop.preset", crop);
         set_config_var("crop.lv_res_pct", ro_pct);
         msleep(800);
         if (!cinema_bridge_crop_apply(crop, ro_pct))
+        {
+            cine_debug_log("crop bridge fail FINAL");
+            cine_debug_flush();
             NotifyBox(3500, "Enable crop_rec module\nfor resolution changes.");
+        }
     }
+    else
+        cine_debug_log("crop bridge OK");
 
     set_config_var("fps.override", 1);
     set_config_var("fps.override.idx", fps_i);
@@ -216,6 +231,7 @@ int cinema_record_apply_full(void)
     {
         if (!cinema_bridge_mlv_arm(1, res_x, aspect, fmt, preview_scale))
         {
+            cine_debug_log("mlv bridge fail, fallback set_config");
             set_config_var("raw.video.enabled", 0);
             msleep(200);
             set_config_var("raw.res_x", res_x);
@@ -227,15 +243,25 @@ int cinema_record_apply_full(void)
             set_config_var("raw.video.enabled", 1);
             msleep(800);
             if (!cinema_bridge_mlv_arm(1, res_x, aspect, fmt, preview_scale))
-                NotifyBox(4000, "Enable mlv_lite module\nfor MLV recording.");
+            {
+                cine_debug_log("mlv bridge fail FINAL");
+                cine_debug_log_modules();
+                cine_debug_flush();
+                NotifyBox(4000, "Enable mlv_lite module\nSee ML/LOGS/CINE_DEBUG.LOG");
+            }
         }
+        else
+            cine_debug_log("mlv bridge OK");
 
         cinema_write_arm_hacks();
 
         if (!get_config_var("raw.video.enabled"))
         {
             gui_uilock(UILOCK_NONE);
-            NotifyBox(5000, "MLV arm FAILED.\nCheck mlv_lite module is ON.");
+            cine_debug_log("MLV arm FAILED raw.video.enabled=0");
+            cine_debug_log_mlv_state();
+            cine_debug_flush();
+            NotifyBox(5000, "MLV arm FAILED.\nUpload ML/LOGS/CINE_DEBUG.LOG");
             return 0;
         }
 
@@ -257,5 +283,8 @@ int cinema_record_apply_full(void)
 
     gui_uilock(UILOCK_NONE);
     config_save();
+    cine_debug_log("apply_full done ok=%d", cinema_rec_container == CINE_REC_MLV);
+    cine_debug_log_mlv_state();
+    cine_debug_flush();
     return 1;
 }
