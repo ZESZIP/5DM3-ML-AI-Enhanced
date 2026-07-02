@@ -8,7 +8,6 @@
  */
 #include "bmp.h"
 #include "font.h"
-#include "vram.h"
 #include "cinema_ui_theme.h"
 #include "cinema_os.h"
 
@@ -68,25 +67,34 @@ static void cine_ui_draw_lowpoly_blocks(int x, int y, int w, int h, int accent)
 
 void cine_ui_draw_veil_20(int x, int y, int w, int h)
 {
-    uint8_t * b = bmp_vram();
-    if (!b || w <= 0 || h <= 0) return;
+    if (w <= 0 || h <= 0) return;
+    /* Fast ~20% darkening: horizontal scanlines (vs per-pixel dither) */
+    for (int yy = y + 3; yy < y + h; yy += 5)
+        bmp_fill(COLOR_BLACK, x, yy, w, 1);
+}
 
-    int x1 = x + w;
-    int y1 = y + h;
+void cine_ui_draw_scrollbar(int x, int y, int h, int total, int visible, int scroll, int accent)
+{
+    if (total <= visible) return;
+    int track_h = h - 8;
+    int thumb_h = MAX(20, track_h * visible / total);
+    int max_scroll = total - visible;
+    int thumb_y = y + 4 + (track_h - thumb_h) * scroll / MAX(1, max_scroll);
 
-    for (int yy = y; yy < y1; yy++)
-    {
-        for (int xx = x; xx < x1; xx++)
-        {
-            /* ~20% black dither over the low-poly layer */
-            if (((xx + yy * 3) & 7) >= 6)
-            {
-                uint8_t * p = &b[BM(xx, yy)];
-                if (*p != COLOR_EMPTY && *p != COLOR_TRANSPARENT_BLACK)
-                    *p = COLOR_BLACK;
-            }
-        }
-    }
+    bmp_fill(accent, x, y + 4, 4, track_h);
+    bmp_fill(COLOR_WHITE, x, thumb_y, 4, thumb_h);
+}
+
+void cine_ui_draw_panel_frame(int bx, int by, int w, int h, int accent, const char * title)
+{
+    int s0 = cine_ui_accent_shade(accent, 0);
+    int s1 = cine_ui_accent_shade(accent, 1);
+
+    cine_ui_draw_shadow(bx, by, w, h, 4);
+    bmp_fill(COLOR_BLACK, bx, by, w, h);
+    cine_ui_fill_chamfer_block(bx + 2, by + 2, w - 4, 46, s0, s1, CINE_CHAMFER);
+    bmp_printf(FONT(FONT_CANON, COLOR_WHITE, s0), bx + 24, by + 16, "%s", title);
+    bmp_draw_rect_chamfer(s0, bx, by, w, h, CINE_CHAMFER, 1);
 }
 
 void cine_ui_draw_backdrop(int x, int y, int w, int h, int accent)

@@ -112,7 +112,7 @@ int cinema_os_page_menu_icon(cinema_os_page_t page)
 }
 
 int cinema_os_tab_bar_height(void) { return CINE_NAV_H; }
-int cinema_os_entry_row_height(void) { return 52; }
+int cinema_os_entry_row_height(void) { return CINE_ROW_H; }
 
 int cinema_os_uses_cinematic_canvas(void)
 {
@@ -137,15 +137,23 @@ void cinema_os_draw_status_footer(void)
     int page_c = cinema_os_page_color(cinema_os_active_page());
     cine_ui_draw_hd_panel(0, foot_y, 720, 48, page_c);
     bmp_printf(FONT(FONT_MED, COLOR_WHITE, page_c), 16, foot_y + 6, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-        "Wheel L/R pages  |  Up/Dn select  |  SET opens panel");
+
+    if (cinema_panel_is_open())
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R option   SET apply   MENU back");
+    else if (cinema_os_uses_cinematic_canvas())
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R pages   Up/Dn row   SET panel");
+    else
+        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+            "L/R pages   Up/Dn select   SET enter");
 
     if (cinema_os_uses_cinematic_canvas())
     {
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 4,
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 4,
             "%s", cinema_write_speed_label());
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 24,
-            "PROFILE: %s", cinema_write_profile_label());
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 24,
+            "%s", cinema_write_profile_label());
 
         if (cinema_record_mlv_armed())
         {

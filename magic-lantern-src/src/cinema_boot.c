@@ -22,6 +22,7 @@
 
 static CONFIG_INT("cinema.boot.done", cinema_boot_done, 0);
 static CONFIG_INT("cinema.modules.ready", cinema_modules_ready, 0);
+static CONFIG_INT("cinema.boot.splash_done", cinema_menu_splash_done, 0);
 
 static int wizard_active = 0;
 static int menu_splash_until = 0;
@@ -248,7 +249,9 @@ static void cinema_boot_task(void * unused)
 void cinema_boot_on_menu_open(void)
 {
     if (wizard_active) return;
-    menu_splash_until = get_ms_clock() + 600;
+    if (cinema_menu_splash_done) return;
+    menu_splash_until = get_ms_clock() + 200;
+    cinema_menu_splash_done = 1;
 }
 
 void cinema_boot_draw_menu_splash(void)

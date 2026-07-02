@@ -348,6 +348,14 @@ static void cine_draw_screen(void)
 
 static MENU_UPDATE_FUNC(cine_record_update)
 {
+    if (cinema_os_enabled())
+    {
+        MENU_SET_SHIDDEN(1);
+        cine_record_active = 0;
+        return;
+    }
+    MENU_SET_SHIDDEN(0);
+
     if (!entry->selected)
     {
         cine_record_active = 0;
