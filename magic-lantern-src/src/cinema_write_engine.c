@@ -47,7 +47,6 @@ static int cinema_write_measure(int bufsize, int duration_ms)
     int t1 = get_ms_clock();
     if (t1 <= t0 || total <= 0) return 0;
 
-    /* centi-MB/s (same unit as raw.write.speed) */
     return (int) ((long long) total * 100 / 1024 / (t1 - t0));
 }
 
@@ -79,7 +78,7 @@ void cinema_write_arm_hacks(void)
     set_config_var("card.test", 1);
     set_config_var("raw.small.hacks", 1);
     set_config_var("raw.use.srm.memory", 1);
-    set_config_var("raw.preview", 2);           /* ML preview path */
+    set_config_var("raw.preview", 2);
     set_config_var("raw.sync_beep", 1);
     set_config_var("fps.override", 1);
 }
@@ -116,35 +115,16 @@ void cinema_write_apply_best_profile(void)
         speed = get_config_var("raw.write.speed");
     if (speed <= 0) return;
 
-    /* Tier 0: fast CF — 4K 14-bit LJ92 @ 25fps */
     if (speed >= 13000)
-    {
-        cinema_write_set_profile(0, "4K 14-bit LJ92",
-            6, 0, 9, 10, 3, 34, 2);
-    }
-    /* Tier 1: solid CF — 4K 10-bit @ 25fps */
+        cinema_write_set_profile(0, "4K 14-bit LJ92", 6, 0, 9, 10, 3, 34, 2);
     else if (speed >= 9500)
-    {
-        cinema_write_set_profile(1, "4K 10-bit",
-            6, 0, 9, 10, 2, 34, 2);
-    }
-    /* Tier 2: mid — 1080p high FPS */
+        cinema_write_set_profile(1, "4K 10-bit", 6, 0, 9, 10, 2, 34, 2);
     else if (speed >= 6500)
-    {
-        cinema_write_set_profile(2, "1080p 60",
-            3, 2, 4, 10, 2, 63, 3);
-    }
-    /* Tier 3: safe — 1080p 24fps */
+        cinema_write_set_profile(2, "1080p 60", 3, 2, 4, 10, 2, 63, 3);
     else if (speed >= 4000)
-    {
-        cinema_write_set_profile(3, "1080p 24",
-            0, 0, 4, 10, 3, 33, 1);
-    }
+        cinema_write_set_profile(3, "1080p 24", 0, 0, 4, 10, 3, 33, 1);
     else
-    {
-        cinema_write_set_profile(4, "720p safe",
-            0, 0, 2, 10, 4, 33, 0);
-    }
+        cinema_write_set_profile(4, "720p safe", 0, 0, 2, 10, 4, 33, 0);
 
     write_engine_ready = 1;
 }
@@ -160,7 +140,7 @@ const char * cinema_write_speed_label(void)
 {
     static char buf[24];
     int s = cinema_write_speed_centi_mbs();
-    if (s <= 0) return "CF: testing...";
+    if (s <= 0) return "CF: calibrating...";
     snprintf(buf, sizeof(buf), "CF %d.%02d MB/s", s / 100, s % 100);
     return buf;
 }
@@ -178,7 +158,6 @@ void cinema_write_engine_tick(void)
 
     int now = get_ms_clock();
 
-    /* refresh live speed from MLV writes when recording */
     if (RECORDING)
     {
         int live = get_config_var("raw.write.speed");
@@ -186,7 +165,6 @@ void cinema_write_engine_tick(void)
         return;
     }
 
-    /* periodic quiet re-probe in LV every 90s */
     if (!lv) return;
     if (now - last_live_probe_ms < 90000) return;
     last_live_probe_ms = now;
@@ -194,36 +172,6 @@ void cinema_write_engine_tick(void)
     cinema_write_benchmark_quiet();
     if (cinema_write_autoprofile)
         cinema_write_apply_best_profile();
-}
-
-static void cinema_write_boot_task(void * unused)
-{
-    (void) unused;
-    msleep(10000);
-
-    cinema_write_arm_hacks();
-    msleep(2000);
-
-    cinema_write_benchmark_quiet();
-    cinema_write_apply_best_profile();
-
-    struct card_info * card = get_shooting_card();
-    if (write_speed_centi > 0 && card)
-    {
-        NotifyBox(5000,
-            "CINEMA WRITE ENGINE\n"
-            "%s %d.%02d MB/s\n"
-            "Profile: %s\n"
-            "Hacks armed — ready to record.",
-            card->type,
-            write_speed_centi / 100, write_speed_centi % 100,
-            write_profile_name
-        );
-    }
-    else
-    {
-        NotifyBox(4000, "CINEMA WRITE ENGINE\nCard benchmark pending.\nInsert CF and enter LV.");
-    }
 }
 
 static void cinema_write_service_task(void * unused)
@@ -236,10 +184,4 @@ static void cinema_write_service_task(void * unused)
     }
 }
 
-static void cinema_write_init(void)
-{
-    task_create("cine_boot", 0x1c, 0x2000, cinema_write_boot_task, 0);
-}
-
-INIT_FUNC(__FILE__, cinema_write_init);
 TASK_CREATE("cine_wr_svc", cinema_write_service_task, 0, 0x1e, 0x1000);

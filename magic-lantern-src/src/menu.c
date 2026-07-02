@@ -31,6 +31,7 @@
 #include "lens.h"
 #include "font.h"
 #include "menu.h"
+#include "cinema_write_engine.h"
 #include "beep.h"
 #include "zebra.h"
 #include "focus.h"
@@ -40,6 +41,7 @@
 #include "lvinfo.h"
 #include "powersave.h"
 #include "cinema_os.h"
+#include "cinema_boot.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -2424,6 +2426,8 @@ static void submenu_key_hint(int x, int y, int fg, int bg, int chr)
 
 static void menu_clean_footer()
 {
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+        return;
     int h = 50;
     if (is_menu_active("Help")) h = font_med.height * 3 + 2;
     int bgu = MENU_BG_COLOR_HEADER_FOOTER;
@@ -3105,6 +3109,9 @@ skip_name:
 static void
 menu_post_display()
 {
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+        return;
+
     char* cfg_preset = get_config_preset_name();
     if (cfg_preset && !submenu_level)
     {
@@ -3564,7 +3571,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (scroll_pos > 0)
+    if (scroll_pos > 0 && !(cinema_os_enabled() && !junkie_mode && !submenu_level))
     {
         for (int i = -13; i <= 13; i++)
             draw_line(360 - i, y + 8 - 12, 360, y - 12, MENU_BAR_COLOR);
@@ -3618,7 +3625,7 @@ menu_display(
         entry = entry->next;
     }
 
-    if (more_entries)
+    if (more_entries && !(cinema_os_enabled() && !junkie_mode && !submenu_level))
     {
         y += 10;
         for (int i = -13; i <= 13; i++)
@@ -4247,10 +4254,19 @@ void menus_display(
         }
         else if( menu->selected)
         {
-            if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode
-                && !submenu_level && cinema_os_uses_cinematic_canvas())
+            if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
             {
-                cinema_os_draw_cinematic_page(list_y_base);
+                if (cinema_os_uses_cinematic_canvas())
+                    cinema_os_draw_cinematic_page(list_y_base);
+                else
+                {
+                    menu_display(
+                        menu,
+                        orig_x + MENU_OFFSET,
+                        list_y_base,
+                        edit_mode ? 1 : 0
+                    );
+                }
             }
             else
             {
@@ -4276,8 +4292,15 @@ void menus_display(
         //~ dim_screen(43, COLOR_BLACK, 0, 45, 720, 480-45-50);
         
         submenu_display(submenu);
-        show_vscroll(submenu);
+        if (!cinema_os_enabled() || junkie_mode || menu_lv_transparent_mode)
+            show_vscroll(submenu);
     }
+
+    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+        cinema_os_draw_status_footer();
+
+    if (cinema_boot_menu_splash_blocking())
+        cinema_boot_draw_menu_splash();
     
     give_semaphore( menu_sem );
 }
@@ -4338,15 +4361,18 @@ submenu_display(struct menu *submenu)
         )
     {
         w = 720 - 2 * bx;
-        int header_accent = menu_cine_colors ? menu_category_color_from_menu(submenu) : MENU_BAR_COLOR;
-        bmp_fill(MENU_BG_COLOR_HEADER_FOOTER,  bx,  by, w, 40);
-        if (menu_cine_colors)
-            bmp_fill(header_accent, bx, by, 5, 40);
+        int header_accent = cinema_os_enabled()
+            ? CINE_COLOR_CINEMA
+            : (menu_cine_colors ? menu_category_color_from_menu(submenu) : MENU_BAR_COLOR);
+        int header_bg = cinema_os_enabled() ? COLOR_BLACK : MENU_BG_COLOR_HEADER_FOOTER;
+        bmp_fill(header_bg,  bx,  by, w, 40);
+        if (menu_cine_colors || cinema_os_enabled())
+            bmp_fill(header_accent, bx, by, cinema_os_enabled() ? w : 5, cinema_os_enabled() ? 4 : 40);
         bmp_fill(COLOR_BLACK,  bx,  by + 40, w, h-40);
         bmp_printf(FONT(FONT_CANON, COLOR_WHITE, NO_BG_ERASE),  bx + 15,  by + 2, "%s", submenu->name);
 
         for (int i = 0; i < 5; i++)
-            bmp_draw_rect(45,  bx - i,  by - i, w + i * 2, h + i * 2);
+            bmp_draw_rect(cinema_os_enabled() ? COLOR_ORANGE : 45,  bx - i,  by - i, w + i * 2, h + i * 2);
 
 /* gradient experiments
         for (int i = 0; i < 3; i++)
@@ -4876,7 +4902,7 @@ menu_redraw_do()
         
         menus_display( menus, 0, 0 ); 
 
-        if (!menu_lv_transparent_mode && !SUBMENU_OR_EDIT && !junkie_mode)
+        if (!menu_lv_transparent_mode && !SUBMENU_OR_EDIT && !junkie_mode && !cinema_os_enabled())
         {
             if (is_menu_active("Help"))
                 menu_show_version();
@@ -5774,6 +5800,9 @@ static void menu_open()
     if (menu_shown)
         return;
 
+    if (cinema_boot_wizard_active())
+        return;
+
     DryosDebugMsg(0, 15, "in menu_open");
     
     // start in my menu, if configured
@@ -5800,6 +5829,8 @@ static void menu_open()
     menu_help_active = 0;
     keyrepeat = 0;
     menu_shown = 1;
+    if (cinema_os_enabled())
+        cinema_os_on_menu_open();
     //~ menu_hidden_should_display_help = 0;
     if (lv)
         menu_zebras_mirror_dirty = 1;
@@ -5820,6 +5851,12 @@ static void menu_close()
     if (!menu_shown)
         return;
     menu_shown = false;
+
+    if (cinema_os_enabled())
+    {
+        cinema_write_arm_hacks();
+        cinema_write_apply_best_profile();
+    }
 
     customize_mode = 0;
     update_disp_mode_bits_from_params();

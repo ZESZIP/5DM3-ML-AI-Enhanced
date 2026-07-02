@@ -1,7 +1,7 @@
 # Install 5D3 Cinema OS build (READ THIS)
 
 **If your camera shows `Magic Lantern 2025-06-20` in Help, you have the WRONG files.**
-You need build version **`CINEMA.OS.2026.5D3`** (or earlier `5DM3.AI.Cinema.2026`).
+You need build version **`CINE.AI.ENHANCED.5D3`** (or `CINEMA.OS.2026.5D3`).
 
 The default GitHub `main` branch includes this build. You can also use branch
 `cursor/5d3-2026-ux-performance-upgrade-4a83`.
@@ -19,10 +19,9 @@ ML/          (entire folder)
 ```
 
 4. **First time only:** Canon menu → firmware version → run update with **ML-SETUP.FIR**
-5. Reboot. Enter LiveView. You should see:
-   - Popup: **"CINEMA OS 2026"**
-   - LiveView bar tag: **AI-CINEMA** (orange)
-6. Press **Delete** → five-page **Cinema OS** nav bar → **CINEMATIC** (orange) page
+5. Reboot. **First boot:** full-screen setup wizard with progress bar (hardware scan, CF test, benchmark, profile). Enter LiveView if prompted.
+6. **Next boots:** silent calibration, then ready.
+7. Press **Delete** → brief **CINE AI ENHANCED** splash → modern OS (no classic ML menu chrome)
 
 ## Verify correct build
 

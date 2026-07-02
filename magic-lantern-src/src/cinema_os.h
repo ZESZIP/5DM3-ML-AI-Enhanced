@@ -41,6 +41,12 @@ void cinema_os_draw_nav_bar(int y);
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h);
 int cinema_os_draw_cinematic_page(int list_y);
 int cinema_os_uses_cinematic_canvas(void);
+int cinema_os_uses_pro_shell(void);
+void cinema_os_draw_status_footer(void);
+void cinema_os_on_menu_open(void);
+
+/* Legacy name */
+#define cinema_os_uses_cine_canvas cinema_os_uses_cinematic_canvas
 
 void cinema_os_get_entry_colors(
     struct menu * tab,

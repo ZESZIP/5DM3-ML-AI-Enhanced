@@ -15,6 +15,7 @@
 #include "menuhelp.h"
 #include "cinema_governor.h"
 #include "cinema_write_engine.h"
+#include "cinema_boot.h"
 #include "gui.h"
 
 static CONFIG_INT("cinema.os", cinema_os, 1);
@@ -118,6 +119,39 @@ int cinema_os_entry_row_height(void) { return 52; }
 int cinema_os_uses_cinematic_canvas(void)
 {
     return cinema_os_enabled() && cinema_os_active_page() == CINE_PAGE_CINEMATIC;
+}
+
+int cinema_os_uses_pro_shell(void)
+{
+    return cinema_os_enabled();
+}
+
+void cinema_os_on_menu_open(void)
+{
+    cinema_boot_on_menu_open();
+}
+
+void cinema_os_draw_status_footer(void)
+{
+    if (!cinema_os_enabled()) return;
+
+    int foot_y = 432;
+    bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
+    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 12, foot_y + 4, "CINE AI ENHANCED");
+    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 12, foot_y + 24,
+        "Branch of Magic Lantern  |  Wheel L/R pages  Up/Dn select");
+
+    if (cinema_os_uses_cinematic_canvas())
+    {
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 4,
+            "%s", cinema_write_speed_label());
+        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 280, foot_y + 24,
+            "PROFILE: %s", cinema_write_profile_label());
+        if (cinema_governor_fallback_active())
+            bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "GOVERNOR ON");
+        else if (cinema_write_engine_ready())
+            bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 640, foot_y + 10, "READY");
+    }
 }
 
 /* ---- value formatters for CINEMATIC rows ---- */
@@ -347,19 +381,6 @@ int cinema_os_draw_cinematic_page(int list_y)
     }
 
     cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll);
-
-    int foot_y = 432;
-    bmp_fill(COLOR_BLACK, 0, foot_y, 720, 48);
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), 12, foot_y + 6,
-        "%s  |  PROFILE: %s",
-        cinema_write_speed_label(),
-        cinema_write_profile_label());
-
-    if (cinema_governor_fallback_active())
-        bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 12, foot_y + 26,
-            "GOVERNOR: adaptive format active");
-    else if (cinema_write_engine_ready())
-        bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 520, foot_y + 6, "ARMED");
 
     return 1;
 }

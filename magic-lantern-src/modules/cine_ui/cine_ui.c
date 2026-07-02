@@ -11,6 +11,10 @@
 #include <fps.h>
 #include <ml-cbr.h>
 
+#include "../../../src/cinema_os.h"
+#include "../../../src/cinema_write_engine.h"
+#include "../../../src/cinema_boot.h"
+
 extern int* cinema_os_enabled_var(void);
 extern int cinema_write_speed_centi_mbs(void);
 
@@ -291,16 +295,9 @@ static unsigned int cine_boot_notify_cbr(unsigned int unused)
     (void)unused;
     if (cine_boot_msg_done || !ml_started) return 1;
     if (!lv) return 1;
+    if (!cinema_boot_complete()) return 1;
 
     cine_boot_msg_done = 1;
-    NotifyBox(10000,
-        "CINEMA OS 2026\n"
-        "\n"
-        "Delete = CINE page (chunky UI)\n"
-        "Write engine arms hacks + CF test\n"
-        "\n"
-        "Ready to record MLV"
-    );
     return 1;
 }
 

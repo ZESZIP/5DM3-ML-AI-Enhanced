@@ -9,6 +9,31 @@ source tree at commit `ed3e7c0d`. The full, buildable source (with our changes) 
 Install is unchanged: copy `autoexec.bin`, `ML-SETUP.FIR` and the `ML/` folder to your
 card root. No network, phone app, or PC tool required.
 
+## Phase 6: Cine AI Enhanced — boot wizard & pro menu shell
+
+### First startup
+Full-screen wizard with **progress bar**:
+1. Hardware scan (5D3 + firmware)
+2. CF/SD detection + integrity test
+3. Card write benchmark
+4. Arm all recording hacks
+5. Auto-apply best MLV profile
+6. Save config
+
+### Delete menu (Trash)
+- **No classic Magic Lantern chrome** (gray footer, ML scroll arrows, version spam)
+- **850ms branded splash:** film icon + **CINE AI ENHANCED** + *A branch of Magic Lantern*
+- Five-page nav + chunky pro lists + orange **CINE** canvas
+- Footer: `CINE AI ENHANCED | Branch of Magic Lantern`
+- Closing menu re-calibrates profile from your settings
+
+### Day-to-day
+Pick options on the **CINE** page → OS auto-calibrates crop/MLV/FPS → press record.
+
+*Files: `cinema_boot.c`, `cinema_os.c`, `menu.c`*
+
+---
+
 ## Phase 5: Five-page Cinema OS UI + adaptive buffer governor
 
 ### Global navigation (Delete menu)
