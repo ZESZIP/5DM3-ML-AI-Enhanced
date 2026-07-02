@@ -216,6 +216,10 @@ int get_menu_edit_mode() { return edit_mode; }
 
 //static CONFIG_INT("menu.first", menu_first_by_icon, ICON_i);
 static CONFIG_INT("menu.first", menu_first_by_icon, ICON_ML_INFO);
+static CONFIG_INT("menu.cine.colors", menu_cine_colors, 1);
+
+int menu_cine_colors_enabled(void) { return menu_cine_colors; }
+int* menu_cine_colors_var(void) { return &menu_cine_colors; }
 
 void menu_set_dirty() { menu_damage = 1; }
 
@@ -2092,6 +2096,46 @@ void color_icon(int x, int y, const char* color)
 
 #endif // CONFIG_MENU_ICONS
 
+static struct menu * menu_get_toplevel(struct menu * m)
+{
+    while (m && m->parent_menu)
+        m = m->parent_menu;
+    return m;
+}
+
+static int menu_category_color_from_icon(int icon)
+{
+    switch (icon)
+    {
+        case ICON_ML_MOVIE:    return COLOR_ORANGE;
+        case ICON_ML_SHOOT:    return COLOR_GREEN1;
+        case ICON_ML_EXPO:     return COLOR_YELLOW;
+        case ICON_ML_FOCUS:    return COLOR_CYAN;
+        case ICON_ML_DISPLAY:  return COLOR_LIGHT_BLUE;
+        case ICON_ML_OVERLAY:  return COLOR_LIGHT_BLUE;
+        case ICON_ML_AUDIO:    return COLOR_MAGENTA;
+        case ICON_ML_PREFS:    return COLOR_GRAY(50);
+        case ICON_ML_SCRIPT:   return COLOR_DARK_CYAN2_MOD;
+        case ICON_ML_DEBUG:    return COLOR_GRAY(40);
+        case ICON_ML_MODULES:  return COLOR_GRAY(35);
+        case ICON_ML_GAMES:    return COLOR_DARK_GREEN1_MOD;
+        default:               return MENU_BAR_COLOR;
+    }
+}
+
+static int menu_category_color_from_menu(struct menu * m)
+{
+    m = menu_get_toplevel(m);
+    if (!m) return MENU_BAR_COLOR;
+    return menu_category_color_from_icon(m->icon ? m->icon : m->name[0]);
+}
+
+static int menu_category_color_for_entry(struct menu_entry * entry)
+{
+    if (!entry || !entry->parent_menu) return MENU_BAR_COLOR;
+    return menu_category_color_from_menu(entry->parent_menu);
+}
+
 static void FAST selection_bar_backend(int c, int black, int x0, int y0, int w, int h)
 {
     uint8_t* B = bmp_vram();
@@ -2790,6 +2834,13 @@ entry_print(
         info->name
     );
 
+    /* category color stripe (left edge) in submenus */
+    if (menu_cine_colors && in_submenu && !menu_lv_transparent_mode)
+    {
+        int stripe = menu_category_color_for_entry(entry);
+        bmp_fill(stripe, x - 8 + x_font_offset, y + 2, 4, h - 4);
+    }
+
 skip_name:
 
     // debug
@@ -2920,7 +2971,7 @@ skip_name:
     if (entry->selected)
     {
         int color_left = 45;
-        int color_right = MENU_BAR_COLOR;
+        int color_right = menu_cine_colors ? menu_category_color_for_entry(entry) : MENU_BAR_COLOR;
         if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
         if (customize_mode) { color_left = color_right = get_customize_color(); }
 
@@ -4103,7 +4154,10 @@ void menus_display(
         if (!menu_lv_transparent_mode)
         {
             if (menu->selected)
-                bmp_fill(bg, x-1, y+2, icon_spacing+3, 38);
+            {
+                int tab_color = menu_cine_colors ? menu_category_color_from_menu(menu) : COLOR_BLACK;
+                bmp_fill(tab_color, x-1, y+2, icon_spacing+3, 38);
+            }
 
             int icon_char = menu->icon ? menu->icon : menu->name[0];
             int icon_width = bfnt_char_get_width(icon_char);
@@ -4254,7 +4308,10 @@ submenu_display(struct menu *submenu)
         )
     {
         w = 720 - 2 * bx;
+        int header_accent = menu_cine_colors ? menu_category_color_from_menu(submenu) : MENU_BAR_COLOR;
         bmp_fill(MENU_BG_COLOR_HEADER_FOOTER,  bx,  by, w, 40);
+        if (menu_cine_colors)
+            bmp_fill(header_accent, bx, by, 5, 40);
         bmp_fill(COLOR_BLACK,  bx,  by + 40, w, h-40);
         bmp_printf(FONT(FONT_CANON, COLOR_WHITE, NO_BG_ERASE),  bx + 15,  by + 2, "%s", submenu->name);
 

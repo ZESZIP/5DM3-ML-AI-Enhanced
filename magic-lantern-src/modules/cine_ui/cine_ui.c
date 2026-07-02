@@ -1,0 +1,244 @@
+/* Cinema UI: color-coded menus, LiveView performance dashboard (2026) */
+
+#include <module.h>
+#include <dryos.h>
+#include <bmp.h>
+#include <menu.h>
+#include <config.h>
+#include <lvinfo.h>
+#include <property.h>
+#include <propvalues.h>
+#include <fps.h>
+
+static CONFIG_INT("cine.dashboard", cinema_dashboard, 1);
+static CONFIG_INT("cine.lite.lv", cinema_lite_lv, 0);
+
+static const int pct_values[] = {100, 75, 50, 25};
+
+static int pct_from_index(int index)
+{
+    if (index < 0 || index >= COUNT(pct_values))
+        return 100;
+    return pct_values[index];
+}
+
+static MENU_UPDATE_FUNC(cine_colors_update)
+{
+    MENU_SET_VALUE(*(menu_cine_colors_var()) ? "ON" : "OFF");
+    MENU_SET_HELP("Color-code menu tabs and selection bars by category.");
+}
+
+static MENU_UPDATE_FUNC(cine_lite_lv_update)
+{
+    MENU_SET_VALUE(cinema_lite_lv ? "ON" : "OFF");
+    MENU_SET_HELP("Hide non-essential dashboard items while recording.");
+}
+
+static struct menu_entry cine_ui_menu[] =
+{
+    {
+        .name = "Cinema UI",
+        .select = menu_open_submenu,
+        .help = "2026 cinema UX: colors, dashboard, performance tweaks.",
+        .children = (struct menu_entry[]) {
+            {
+                .name = "Color-coded menus",
+                .priv = NULL,
+                .max = 1,
+                .update = cine_colors_update,
+                .choices = CHOICES("OFF", "ON"),
+                .icon_type = IT_BOOL,
+                .help2 = "Orange=Movie, Green=Shoot, Yellow=Expo, Cyan=Focus,\n"
+                          "Blue=Display, Magenta=Audio. Nothing hidden.",
+            },
+            {
+                .name = "Cinema dashboard",
+                .priv = &cinema_dashboard,
+                .max = 1,
+                .choices = CHOICES("OFF", "ON"),
+                .icon_type = IT_BOOL,
+                .help = "Show FPS, crop %, preview % and power override on LV bars.",
+            },
+            {
+                .name = "Lite LV while recording",
+                .priv = &cinema_lite_lv,
+                .max = 1,
+                .update = cine_lite_lv_update,
+                .choices = CHOICES("OFF", "ON"),
+                .icon_type = IT_BOOL,
+                .help2 = "When ON, cinema dashboard hides FPS/crop/preview\n"
+                          "tags during recording to reduce overlay work.",
+            },
+            {
+                .name = "Color legend",
+                .select = menu_open_submenu,
+                .help = "Where to find performance controls (nothing moved or removed).",
+                .children = (struct menu_entry[]) {
+                    {
+                        .name = "Recording readout %",
+                        .help = "Movie > Crop mode > Recording readout %",
+                        .help2 = "Crops sensor lines for recording (MLV file). Orange tab.",
+                    },
+                    {
+                        .name = "Preview scale %",
+                        .help = "Movie > mlv_lite > Preview scale %",
+                        .help2 = "Preview-only downscale; MLV stays full resolution.",
+                    },
+                    {
+                        .name = "FPS override",
+                        .help = "Movie > FPS override",
+                        .help2 = "Up to 120 fps where hardware allows (5D3 clamps).",
+                    },
+                    {
+                        .name = "Never power off",
+                        .help = "Prefs > Powersave in LiveView",
+                        .help2 = "Override Canon auto shutoff (use with care).",
+                    },
+                    MENU_EOL,
+                },
+            },
+            MENU_EOL,
+        },
+    },
+};
+
+static LVINFO_UPDATE_FUNC(cine_fps_update)
+{
+    LVINFO_BUFFER(16);
+    if (!cinema_dashboard) { item->width = 0; return; }
+    if (cinema_lite_lv && RECORDING) { item->width = 0; return; }
+    if (!lv) { item->width = 0; return; }
+
+    int fps = fps_get_current_x1000();
+    if (fps <= 0) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "%d.%d", fps / 1000, (fps % 1000) / 100);
+    item->color_fg = COLOR_CYAN;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 8;
+}
+
+static LVINFO_UPDATE_FUNC(cine_readout_update)
+{
+    LVINFO_BUFFER(16);
+    if (!cinema_dashboard) { item->width = 0; return; }
+    if (cinema_lite_lv && RECORDING) { item->width = 0; return; }
+    if (!lv) { item->width = 0; return; }
+
+    int pct = pct_from_index(get_config_var("crop.lv_res_pct"));
+    if (pct >= 100) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "RO:%d%%", pct);
+    item->color_fg = COLOR_ORANGE;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 7;
+}
+
+static LVINFO_UPDATE_FUNC(cine_preview_update)
+{
+    LVINFO_BUFFER(16);
+    if (!cinema_dashboard) { item->width = 0; return; }
+    if (cinema_lite_lv && RECORDING) { item->width = 0; return; }
+    if (!lv) { item->width = 0; return; }
+
+    int pct = pct_from_index(get_config_var("raw.preview.lv_scale"));
+    if (pct >= 100) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "PV:%d%%", pct);
+    item->color_fg = COLOR_LIGHT_BLUE;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 6;
+}
+
+static LVINFO_UPDATE_FUNC(cine_power_update)
+{
+    LVINFO_BUFFER(8);
+    if (!cinema_dashboard) { item->width = 0; return; }
+
+    if (!get_config_var("idle.never.poweroff")) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "PWR!");
+    item->color_fg = COLOR_RED;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 9;
+}
+
+static LVINFO_UPDATE_FUNC(cine_rec_update)
+{
+    LVINFO_BUFFER(8);
+    if (!cinema_dashboard) { item->width = 0; return; }
+    if (!RECORDING) { item->width = 0; return; }
+
+    snprintf(buffer, sizeof(buffer), "REC");
+    item->color_fg = COLOR_RED;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 10;
+}
+
+static struct lvinfo_item cine_lv_items[] =
+{
+    {
+        .name = "Cine FPS",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_fps_update,
+        .preferred_position = -40,
+        .priority = 8,
+    },
+    {
+        .name = "Cine readout",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_readout_update,
+        .preferred_position = -30,
+        .priority = 7,
+    },
+    {
+        .name = "Cine preview",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_preview_update,
+        .preferred_position = -20,
+        .priority = 6,
+    },
+    {
+        .name = "Cine power",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_power_update,
+        .preferred_position = 40,
+        .priority = 9,
+    },
+    {
+        .name = "Cine rec",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_rec_update,
+        .preferred_position = 30,
+        .priority = 10,
+    },
+};
+
+static unsigned int cine_ui_init(void)
+{
+    cine_ui_menu[0].children[0].priv = menu_cine_colors_var();
+    menu_add("Display", cine_ui_menu, COUNT(cine_ui_menu));
+    lvinfo_add_items(cine_lv_items, COUNT(cine_lv_items));
+    return 0;
+}
+
+static unsigned int cine_ui_deinit(void)
+{
+    return 0;
+}
+
+MODULE_INFO_START()
+    MODULE_INIT(cine_ui_init)
+    MODULE_DEINIT(cine_ui_deinit)
+MODULE_INFO_END()
+
+MODULE_CONFIGS_START()
+    MODULE_CONFIG(cinema_dashboard)
+    MODULE_CONFIG(cinema_lite_lv)
+MODULE_CONFIGS_END()
+
+MODULE_PROPHANDLERS_START()
+MODULE_PROPHANDLERS_END()
+
+MODULE_CBRS_START()
+MODULE_CBRS_END()
