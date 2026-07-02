@@ -18,6 +18,8 @@
 #include "cinema_panels.h"
 #include "cinema_record_apply.h"
 #include "cinema_ui_theme.h"
+#include "cinema_thermal.h"
+#include "beep.h"
 #include "gui.h"
 
 static CONFIG_INT("cinema.os", cinema_os, 1);
@@ -49,6 +51,7 @@ static const int page_menu_icons[CINE_PAGE_COUNT] = {
 
 enum {
     CINE_ROW_RES = 0,
+    CINE_ROW_LV,
     CINE_ROW_FPS,
     CINE_ROW_FORMAT,
     CINE_ROW_GAMMA,
@@ -57,18 +60,20 @@ enum {
     CINE_ROW_ISO,
     CINE_ROW_WB,
     CINE_ROW_AUDIO,
-    CINE_ROW_COUNT = 9
+    CINE_ROW_COUNT = 10
 };
 
 static const int row_icons[CINE_ROW_COUNT] = {
-    CINE_ICON_RES, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_RES, CINE_ICON_LV, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
     CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
-    "RESOLUTION", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
+    "RESOLUTION", "LV PREVIEW %", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
     "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "AUDIO MONITOR"
 };
+
+static const int lv_dial_steps[] = { 25, 50, 75, 100 };
 
 int cinema_os_enabled(void) { return cinema_os; }
 int* cinema_os_enabled_var(void) { return &cinema_os; }
@@ -142,8 +147,14 @@ void cinema_os_draw_status_footer(void)
         bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
             "L/R option   SET apply   MENU back");
     else if (cinema_os_uses_cinematic_canvas())
-        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-            "L/R pages   Up/Dn row   SET panel");
+    {
+        if (cine_row_sel == CINE_ROW_LV && !cinema_panel_is_open())
+            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+                "L/R LV dial   Up/Dn row   SET panel");
+        else
+            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+                "L/R pages   Up/Dn row   SET panel");
+    }
     else
         bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
             "L/R pages   Up/Dn select   SET enter");
@@ -158,7 +169,7 @@ void cinema_os_draw_status_footer(void)
         if (cinema_record_mlv_armed())
         {
             if (cinema_record_format_is_cinepack())
-                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 500, foot_y + 4, "CIX ARMED");
+                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 500, foot_y + 4, "CSP ARMED");
             else
                 bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "RAW ARMED");
         }
@@ -169,6 +180,12 @@ void cinema_os_draw_status_footer(void)
             bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 640, foot_y + 4, "GOV");
         else if (cinema_write_engine_ready())
             bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 640, foot_y + 10, "READY");
+
+        if (cinema_thermal_warn_active())
+        {
+            int tc = cinema_thermal_celsius();
+            bmp_printf(FONT(FONT_SMALL, COLOR_RED, COLOR_BLACK), 560, foot_y + 26, "%dC", tc);
+        }
     }
 }
 
@@ -225,11 +242,17 @@ static void cine_fmt_audio(char * buf, int len)
     snprintf(buf, len, "Ch 1 & 2");
 }
 
+static void cine_fmt_lv(char * buf, int len)
+{
+    snprintf(buf, len, "%d%%", cinema_record_lv_pct());
+}
+
 static void cine_row_value(int row, char * buf, int len)
 {
     switch (row)
     {
         case CINE_ROW_RES:     cine_fmt_resolution(buf, len); break;
+        case CINE_ROW_LV:      cine_fmt_lv(buf, len); break;
         case CINE_ROW_FPS:     cine_fmt_fps(buf, len); break;
         case CINE_ROW_FORMAT:
             snprintf(buf, len, "%s", cinema_record_format_label());
@@ -242,6 +265,39 @@ static void cine_row_value(int row, char * buf, int len)
         case CINE_ROW_AUDIO:   cine_fmt_audio(buf, len); break;
         default:               snprintf(buf, len, "-"); break;
     }
+}
+
+static void cine_draw_lv_dial(int x, int y, int pct, int accent, int sel)
+{
+    int bar_w = 120;
+    int bar_h = 14;
+    int fg = sel ? COLOR_WHITE : accent;
+    int bg = sel ? accent : COLOR_GRAY(30);
+    int fill_w = bar_w * COERCE(pct, 25, 100) / 100;
+
+    bmp_fill(bg, x, y, bar_w, bar_h);
+    bmp_fill(fg, x, y, fill_w, bar_h);
+    bmp_draw_rect(COLOR_WHITE, x, y, bar_w, bar_h);
+
+    bmp_printf(FONT(FONT_MED, fg, sel ? accent : COLOR_BLACK),
+        x + bar_w + 8, y - 2, "%d%%", pct);
+}
+
+static void cine_lv_step(int delta)
+{
+    int cur = cinema_record_lv_pct();
+    int best = 0;
+    int best_d = 1000;
+    for (int i = 0; i < COUNT(lv_dial_steps); i++)
+    {
+        int d = ABS(lv_dial_steps[i] - cur);
+        if (d < best_d) { best_d = d; best = i; }
+    }
+    best += delta;
+    if (best < 0) best = 0;
+    if (best >= COUNT(lv_dial_steps)) best = COUNT(lv_dial_steps) - 1;
+    cinema_record_set_lv_pct(lv_dial_steps[best]);
+    beep();
 }
 
 /* ---- drawing primitives ---- */
@@ -350,10 +406,18 @@ int cinema_os_draw_cinematic_page(int list_y)
         cine_row_value(row, val, sizeof(val));
 
         bmp_printf(FONT(FONT_LARGE, fg, row_bg), 80, y + 10, "%s", row_titles[row]);
-        bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
-            80, y + 32, "%s", val);
+        if (row == CINE_ROW_LV)
+        {
+            int pct = cinema_record_lv_pct();
+            cine_draw_lv_dial(520, y + 20, pct, bg, sel);
+            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R dial — preview scale");
+        }
+        else
+            bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
+                80, y + 32, "%s", val);
 
-        cine_draw_chevron(686, y + 16);
+        if (row != CINE_ROW_LV)
+            cine_draw_chevron(686, y + 16);
     }
 
     cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll, bg);
@@ -367,7 +431,19 @@ int cinema_os_draw_cinematic_page(int list_y)
 static void cine_row_open(int row)
 {
     if (row < 0 || row >= CINE_ROW_COUNT) return;
-    cinema_panel_open(row);
+    if (row == CINE_ROW_LV) return;
+    int pr = row;
+    if (row > CINE_ROW_LV) pr--;
+    cinema_panel_open(pr);
+}
+
+int cinema_os_handle_lr_key(int delta)
+{
+    if (!cinema_os_enabled() || !cinema_os_uses_cinematic_canvas()) return 0;
+    if (cinema_panel_is_open()) return 0;
+    if (cine_row_sel != CINE_ROW_LV) return 0;
+    cine_lv_step(delta);
+    return 1;
 }
 
 int cinema_os_handle_key(unsigned int key)

@@ -5549,9 +5549,17 @@ handle_ml_menu_keys(struct event * event)
                 }
                 else if (!cinema_panel_is_open())
                 {
-                    cinema_os_page_nav(1);
-                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                    if (cinema_os_uses_cinematic_canvas()
+                        && cinema_os_handle_lr_key(1))
+                    {
+                        menu_damage = 1;
+                    }
+                    else
+                    {
+                        cinema_os_page_nav(1);
+                        select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                        menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                    }
                 }
             }
             else
@@ -5598,9 +5606,17 @@ handle_ml_menu_keys(struct event * event)
                 }
                 else if (!cinema_panel_is_open())
                 {
-                    cinema_os_page_nav(-1);
-                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                    if (cinema_os_uses_cinematic_canvas()
+                        && cinema_os_handle_lr_key(-1))
+                    {
+                        menu_damage = 1;
+                    }
+                    else
+                    {
+                        cinema_os_page_nav(-1);
+                        select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                        menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                    }
                 }
             }
             else

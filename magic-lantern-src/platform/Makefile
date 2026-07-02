@@ -334,6 +334,7 @@ ML_SRC_OBJS_00 = \
     cine_stream.o \
     cinema_governor.o \
     cinema_write_engine.o \
+    cinema_thermal.o \
     cinema_boot.o \
     cinema_debug.o \
     debug.o \

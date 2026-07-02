@@ -9,6 +9,7 @@
 #include "fio-ml.h"
 #include "fps.h"
 #include "console.h"
+#include "cinema_thermal.h"
 
 static CONFIG_INT("cinema.write.engine", cinema_write_engine_on, 1);
 static CONFIG_INT("cinema.write.autoprofile", cinema_write_autoprofile, 1);
@@ -74,7 +75,8 @@ void cinema_write_arm_hacks(void)
     set_config_var("cinema.os", 1);
     set_config_var("cinema.governor", 1);
     set_config_var("cinema.write.engine", 1);
-    set_config_var("idle.never.poweroff", 1);
+    set_config_var("cinema.thermal.enable", 1);
+    /* idle.never.poweroff left OFF — thermal guard restores Canon shutdown */
     set_config_var("card.test", 1);
     set_config_var("raw.small.hacks", 1);
     set_config_var("raw.use.srm.memory", 1);
@@ -115,16 +117,23 @@ void cinema_write_apply_best_profile(void)
         speed = get_config_var("raw.write.speed");
     if (speed <= 0) return;
 
-    if (speed >= 13000)
-        cinema_write_set_profile(0, "4K 14-bit LJ92", 6, 0, 9, 10, 3, 34, 2);
-    else if (speed >= 9500)
-        cinema_write_set_profile(1, "4K 10-bit", 6, 0, 9, 10, 2, 34, 2);
-    else if (speed >= 6500)
-        cinema_write_set_profile(2, "1080p 60", 3, 2, 4, 10, 2, 63, 3);
+    if (speed >= 7000)
+    {
+        set_config_var("cine.rec.fmtidx", 1);
+        cinema_write_set_profile(0, "CSP 4K25", 6, 0, 9, 10, 4, 34, 2);
+    }
+    else if (speed >= 5500)
+    {
+        set_config_var("cine.rec.fmtidx", 1);
+        cinema_write_set_profile(1, "CSP 1080p60", 3, 2, 4, 10, 4, 63, 3);
+    }
     else if (speed >= 4000)
-        cinema_write_set_profile(3, "1080p 24", 0, 0, 4, 10, 3, 33, 1);
+    {
+        set_config_var("cine.rec.fmtidx", 1);
+        cinema_write_set_profile(2, "CSP 1080p24", 0, 0, 4, 10, 4, 33, 1);
+    }
     else
-        cinema_write_set_profile(4, "720p safe", 0, 0, 2, 10, 4, 33, 0);
+        cinema_write_set_profile(3, "720p safe", 0, 0, 2, 10, 4, 33, 0);
 
     write_engine_ready = 1;
 }
@@ -179,8 +188,9 @@ static void cinema_write_service_task(void * unused)
     (void) unused;
     while (1)
     {
-        msleep(5000);
+        msleep(2000);
         cinema_write_engine_tick();
+        cinema_thermal_tick();
     }
 }
 

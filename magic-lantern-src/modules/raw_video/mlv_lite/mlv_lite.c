@@ -3010,7 +3010,7 @@ static char* get_next_raw_movie_file_name()
              * Try to match Canon movie file names
              * Use the file number from the H.264 card; increment if there are duplicates
              */
-            snprintf(filename, sizeof(filename), "%s/%s%04d.%s", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000), cine_codec_stream_mode() ? "CIX" : "MLV");
+            snprintf(filename, sizeof(filename), "%s/%s%04d.%s", get_cf_dcim_dir(), get_file_prefix(), MOD(get_shooting_card()->file_number + number, 10000), cine_codec_stream_mode() ? "CSP" : "MLV");
         }
         else
         {
@@ -3018,7 +3018,7 @@ static char* get_next_raw_movie_file_name()
              * Get unique file names from the current date/time
              * last field gets incremented if there's another video with the same name
              */
-            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.%s", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99), cine_codec_stream_mode() ? "CIX" : "MLV");
+            snprintf(filename, sizeof(filename), "%s/M%02d-%02d%02d.%s", get_cf_dcim_dir(), now.tm_mday, now.tm_hour, COERCE(now.tm_min + number, 0, 99), cine_codec_stream_mode() ? "CSP" : "MLV");
         }
         
         /* already existing file? */
@@ -3426,7 +3426,7 @@ void raw_video_rec_task()
         int fps = fps_get_current_x1000();
         if (!cine_stream_begin_file(f, res_x, res_y, fps, BPP))
         {
-            NotifyBox(5000, "CIX stream error");
+            NotifyBox(5000, "CSP stream error");
             goto cleanup;
         }
         written_total = written_chunk = 0;
@@ -3849,7 +3849,7 @@ abort_and_check_early_stop:
     else if (cine_codec_stream_mode() && !cine_stream_frame_count())
     {
         bmp_printf( FONT_MED, 30, 110, 
-            "CIX stream empty — card full maybe."
+            "CSP stream empty — card full maybe."
         );
         beep_times(3);
         msleep(2000);

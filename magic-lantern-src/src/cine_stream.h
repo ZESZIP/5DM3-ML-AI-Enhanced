@@ -1,8 +1,13 @@
 #ifndef _cine_stream_h_
 #define _cine_stream_h_
 
-#define CIX_MAGIC 0x31584943  /* 'CIX1' */
-#define CIX_FRAME_MAGIC 0x46584943  /* 'CIXF' */
+/* CSP — CINEPACK Stream Pro container (direct-to-card, no RAM ring) */
+#define CSP_MAGIC 0x31505343       /* 'CSP1' */
+#define CSP_FRAME_MAGIC 0x46505343 /* 'CSPF' */
+
+/* Legacy CIX (decoder still reads these) */
+#define CIX_MAGIC 0x31584943
+#define CIX_FRAME_MAGIC 0x46584943
 
 int cine_stream_active(void);
 int cine_stream_begin_file(void * file, int width, int height, int fps_x1000, int bpp);

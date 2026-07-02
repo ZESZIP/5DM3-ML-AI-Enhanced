@@ -110,11 +110,16 @@ void cinema_record_set_lv_pct(int pct)
     cine_codec_set_lv_pct(cine_lv_pct);
 }
 
+int cinema_record_lv_pct(void)
+{
+    return COERCE(cine_lv_pct, 25, 100);
+}
+
 const char * cinema_record_container_label(void)
 {
     if (cinema_rec_container == CINE_REC_MOV)
         return "MOV";
-    return cinema_record_format_is_cinepack() ? "CIX" : "RAW";
+    return cinema_record_format_is_cinepack() ? "CSP" : "RAW";
 }
 
 const char * cinema_record_format_label(void)
