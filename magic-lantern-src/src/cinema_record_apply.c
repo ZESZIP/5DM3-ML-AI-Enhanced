@@ -23,6 +23,8 @@ static CONFIG_INT("cine.rec.fmtidx", cine_fmt_idx, 1);
 static CONFIG_INT("cinema.rec.container", cinema_rec_container, 1);
 static CONFIG_INT("cine.sensor.pct", cine_sensor_pct, 100);
 static CONFIG_INT("cine.lv.pct", cine_lv_pct, 50);
+static CONFIG_INT("cine.rec.bpp", cine_bpp_idx, 0);
+static CONFIG_INT("cine.rec.peaking", cine_peaking_on, 1);
 
 static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K UHD", "6K" };
 static const int    res_target_w[] = { 1280, 1920, 2704, 3840, 5760 };
@@ -36,7 +38,11 @@ static const char * fmt_labels[] = {
 
 #define CINE_FMT_MOV       0
 #define CINE_FMT_CINEPACK  1
-#define CINE_RAW_FMT_ARM   4  /* internal raw path; CINEPACK replaces card output */
+#define CINE_RAW_FMT_ARM   4  /* legacy; bpp idx selects raw.output_format */
+
+/* raw.output_format indices for CINEPACK source depth */
+static const int bpp_output_fmt[] = { 3, 4, 2, 5 }; /* 14, 12, 10, 8-bit */
+static const char * bpp_labels[]  = { "14-bit", "12-bit", "10-bit", "8-bit" };
 
 static const int res_presets[] = {
     640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3072, 3520, 4096, 5796
@@ -115,6 +121,48 @@ int cinema_record_lv_pct(void)
     return COERCE(cine_lv_pct, 25, 100);
 }
 
+void cinema_record_set_bpp_idx(int idx)
+{
+    cine_bpp_idx = COERCE(idx, 0, COUNT(bpp_labels) - 1);
+    set_config_var("cine.rec.bpp", cine_bpp_idx);
+}
+
+int cinema_record_bpp_idx(void)
+{
+    return COERCE(cine_bpp_idx, 0, COUNT(bpp_labels) - 1);
+}
+
+const char * cinema_record_bpp_label(void)
+{
+    return bpp_labels[cinema_record_bpp_idx()];
+}
+
+void cinema_record_set_peaking(int on)
+{
+    cine_peaking_on = on ? 1 : 0;
+    set_config_var("focus.peaking", cine_peaking_on);
+    if (cine_peaking_on)
+    {
+        set_config_var("focus.peaking.disp", 2);
+        set_config_var("focus.peaking.thr", 4);
+    }
+}
+
+int cinema_record_peaking_on(void)
+{
+    return cine_peaking_on;
+}
+
+static void cinema_record_apply_peaking(void)
+{
+    set_config_var("focus.peaking", cine_peaking_on);
+    if (cine_peaking_on)
+    {
+        set_config_var("focus.peaking.disp", 2);
+        set_config_var("focus.peaking.thr", 4);
+    }
+}
+
 const char * cinema_record_container_label(void)
 {
     if (cinema_rec_container == CINE_REC_MOV)
@@ -179,8 +227,11 @@ int cinema_record_apply_full(void)
 
     int use_cinepack = cinema_record_format_is_cinepack();
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
+    int bpp_i = cinema_record_bpp_idx();
 
     cine_codec_set_mode(use_cinepack, 90);
+    set_config_var("cine.codec.pack", use_cinepack ? 1 : 0);
+    set_config_var("cine.codec.quality", 90);
     cine_codec_set_sensor_pct(cine_sensor_pct);
     cine_codec_set_lv_pct(cine_lv_pct);
     cine_codec_set_record_profile(cine_res, cine_fps, cine_beast);
@@ -189,13 +240,13 @@ int cinema_record_apply_full(void)
 
     if (cine_beast == 1)
     {
-        crop = 6; res_x = 9; aspect = 10; fmt = CINE_RAW_FMT_ARM; fps_i = 34;
+        crop = 6; res_x = 9; aspect = 10; fmt = bpp_output_fmt[bpp_i]; fps_i = 34;
         cine_fmt_idx = CINE_FMT_CINEPACK;
         cinema_rec_container = CINE_REC_MLV;
     }
     else if (cine_beast == 2)
     {
-        crop = 3; ro_pct = 2; res_x = 4; aspect = 10; fmt = CINE_RAW_FMT_ARM; fps_i = 77;
+        crop = 3; ro_pct = 2; res_x = 4; aspect = 10; fmt = bpp_output_fmt[bpp_i]; fps_i = 77;
         preview_scale = 3;
         cine_fmt_idx = CINE_FMT_CINEPACK;
         cinema_rec_container = CINE_REC_MLV;
@@ -208,10 +259,12 @@ int cinema_record_apply_full(void)
         aspect = 10;
         fps_i = fps_idx[cine_fps];
         if (cinema_rec_container == CINE_REC_MLV)
-            fmt = CINE_RAW_FMT_ARM;
+            fmt = bpp_output_fmt[bpp_i];
         else
-            fmt = CINE_RAW_FMT_ARM;
+            fmt = bpp_output_fmt[bpp_i];
     }
+
+    cinema_record_apply_peaking();
 
     gui_uilock(UILOCK_EVERYTHING);
 

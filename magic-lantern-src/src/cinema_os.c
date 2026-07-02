@@ -52,6 +52,7 @@ static const int page_menu_icons[CINE_PAGE_COUNT] = {
 enum {
     CINE_ROW_RES = 0,
     CINE_ROW_LV,
+    CINE_ROW_DEPTH,
     CINE_ROW_FPS,
     CINE_ROW_FORMAT,
     CINE_ROW_GAMMA,
@@ -59,21 +60,27 @@ enum {
     CINE_ROW_APERTURE,
     CINE_ROW_ISO,
     CINE_ROW_WB,
+    CINE_ROW_PEAK,
     CINE_ROW_AUDIO,
-    CINE_ROW_COUNT = 10
+    CINE_ROW_COUNT = 12
 };
 
 static const int row_icons[CINE_ROW_COUNT] = {
-    CINE_ICON_RES, CINE_ICON_LV, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
-    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_AUDIO
+    CINE_ICON_RES, CINE_ICON_LV, CINE_ICON_SHUTTER, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
+    CINE_ICON_SHUTTER, CINE_ICON_APERTURE, CINE_ICON_ISO, CINE_ICON_WB, CINE_ICON_FOCUS, CINE_ICON_AUDIO
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
-    "RESOLUTION", "LV PREVIEW %", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
-    "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "AUDIO MONITOR"
+    "RESOLUTION", "LV PREVIEW %", "BIT DEPTH", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
+    "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "FOCUS PEAKING", "AUDIO MONITOR"
 };
 
 static const int lv_dial_steps[] = { 25, 50, 75, 100 };
+
+/* panel row for cinematic row, or -1 for dial-only rows */
+static const int cine_panel_map[CINE_ROW_COUNT] = {
+    0, -1, -1, 1, 2, 3, 4, 5, 6, 7, -1, 8
+};
 
 int cinema_os_enabled(void) { return cinema_os; }
 int* cinema_os_enabled_var(void) { return &cinema_os; }
@@ -151,6 +158,10 @@ void cinema_os_draw_status_footer(void)
         if (cine_row_sel == CINE_ROW_LV && !cinema_panel_is_open())
             bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
                 "L/R LV dial   Up/Dn row   SET panel");
+        else if ((cine_row_sel == CINE_ROW_DEPTH || cine_row_sel == CINE_ROW_PEAK)
+            && !cinema_panel_is_open())
+            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
+                "L/R adjust   Up/Dn row   SET apply");
         else
             bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
                 "L/R pages   Up/Dn row   SET panel");
@@ -247,12 +258,23 @@ static void cine_fmt_lv(char * buf, int len)
     snprintf(buf, len, "%d%%", cinema_record_lv_pct());
 }
 
+static void cine_fmt_depth(char * buf, int len)
+{
+    snprintf(buf, len, "%s", cinema_record_bpp_label());
+}
+
+static void cine_fmt_peak(char * buf, int len)
+{
+    snprintf(buf, len, "%s", cinema_record_peaking_on() ? "ON" : "OFF");
+}
+
 static void cine_row_value(int row, char * buf, int len)
 {
     switch (row)
     {
         case CINE_ROW_RES:     cine_fmt_resolution(buf, len); break;
         case CINE_ROW_LV:      cine_fmt_lv(buf, len); break;
+        case CINE_ROW_DEPTH:   cine_fmt_depth(buf, len); break;
         case CINE_ROW_FPS:     cine_fmt_fps(buf, len); break;
         case CINE_ROW_FORMAT:
             snprintf(buf, len, "%s", cinema_record_format_label());
@@ -262,6 +284,7 @@ static void cine_row_value(int row, char * buf, int len)
         case CINE_ROW_APERTURE:cine_fmt_aperture(buf, len); break;
         case CINE_ROW_ISO:     cine_fmt_iso(buf, len); break;
         case CINE_ROW_WB:      cine_fmt_wb(buf, len); break;
+        case CINE_ROW_PEAK:    cine_fmt_peak(buf, len); break;
         case CINE_ROW_AUDIO:   cine_fmt_audio(buf, len); break;
         default:               snprintf(buf, len, "-"); break;
     }
@@ -298,6 +321,26 @@ static void cine_lv_step(int delta)
     if (best >= COUNT(lv_dial_steps)) best = COUNT(lv_dial_steps) - 1;
     cinema_record_set_lv_pct(lv_dial_steps[best]);
     beep();
+}
+
+static void cine_depth_step(int delta)
+{
+    int n = 4;
+    int cur = cinema_record_bpp_idx();
+    cur = MOD(cur + delta, n);
+    cinema_record_set_bpp_idx(cur);
+    beep();
+}
+
+static void cine_peak_toggle(void)
+{
+    cinema_record_set_peaking(!cinema_record_peaking_on());
+    beep();
+}
+
+static int cine_row_is_dial(int row)
+{
+    return row == CINE_ROW_LV || row == CINE_ROW_DEPTH || row == CINE_ROW_PEAK;
 }
 
 /* ---- drawing primitives ---- */
@@ -412,11 +455,24 @@ int cinema_os_draw_cinematic_page(int list_y)
             cine_draw_lv_dial(520, y + 20, pct, bg, sel);
             bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R dial — preview scale");
         }
+        else if (row == CINE_ROW_DEPTH)
+        {
+            bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
+                520, y + 20, "%s", val);
+            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R — source depth for CSP");
+        }
+        else if (row == CINE_ROW_PEAK)
+        {
+            int pk = cinema_record_peaking_on();
+            bmp_printf(FONT(FONT_MED, pk ? COLOR_GREEN1 : COLOR_GRAY(45), row_bg),
+                520, y + 20, "%s", pk ? "ON" : "OFF");
+            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R toggle ML focus peaking");
+        }
         else
             bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
                 80, y + 32, "%s", val);
 
-        if (row != CINE_ROW_LV)
+        if (!cine_row_is_dial(row))
             cine_draw_chevron(686, y + 16);
     }
 
@@ -431,19 +487,34 @@ int cinema_os_draw_cinematic_page(int list_y)
 static void cine_row_open(int row)
 {
     if (row < 0 || row >= CINE_ROW_COUNT) return;
-    if (row == CINE_ROW_LV) return;
-    int pr = row;
-    if (row > CINE_ROW_LV) pr--;
-    cinema_panel_open(pr);
+    if (cine_panel_map[row] < 0)
+    {
+        if (row == CINE_ROW_DEPTH || row == CINE_ROW_PEAK)
+            cinema_record_apply_full();
+        return;
+    }
+    cinema_panel_open(cine_panel_map[row]);
 }
 
 int cinema_os_handle_lr_key(int delta)
 {
     if (!cinema_os_enabled() || !cinema_os_uses_cinematic_canvas()) return 0;
     if (cinema_panel_is_open()) return 0;
-    if (cine_row_sel != CINE_ROW_LV) return 0;
-    cine_lv_step(delta);
-    return 1;
+
+    switch (cine_row_sel)
+    {
+        case CINE_ROW_LV:
+            cine_lv_step(delta);
+            return 1;
+        case CINE_ROW_DEPTH:
+            cine_depth_step(delta);
+            return 1;
+        case CINE_ROW_PEAK:
+            cine_peak_toggle();
+            return 1;
+        default:
+            return 0;
+    }
 }
 
 int cinema_os_handle_key(unsigned int key)
