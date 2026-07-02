@@ -36,7 +36,7 @@ static const char * fmt_labels[] = {
     "MLV 10-bit",
     "MLV LJ92 14-bit",
     "MLV LJ92 12-bit",
-    "CINEPACK Pro (85%)"
+    "CINEPACK Stream Pro"
 };
 
 static const int fmt_output[] = { -1, 0, 1, 2, 3, 4, 4 };
@@ -167,9 +167,10 @@ int cinema_record_apply_full(void)
     int use_cinepack = (cine_fmt_idx == 6);
     int crop, ro_pct, res_x, aspect, fmt, fps_i, preview_scale;
 
-    cine_codec_set_mode(use_cinepack, 85);
+    cine_codec_set_mode(use_cinepack, 90);
     cine_codec_set_sensor_pct(cine_sensor_pct);
     cine_codec_set_lv_pct(cine_lv_pct);
+    cine_codec_set_record_profile(cine_res, cine_fps, cine_beast);
     ro_pct = cine_codec_readout_pct_index();
     preview_scale = cine_codec_lv_scale_index();
 
@@ -266,11 +267,12 @@ int cinema_record_apply_full(void)
         }
 
         NotifyBox(4500,
-            "%s armed\n%s @ %s\nSensor %d%%  LV %d%%\nPress REC for MLV.",
+            "%s armed\n%s @ %s\nSensor %d%%  LV %d%%\n%s",
             fmt_labels[cine_fmt_idx],
             cinema_record_resolution_label(),
             cinema_record_fps_label(),
-            cine_sensor_pct, cine_lv_pct);
+            cine_sensor_pct, cine_lv_pct,
+            use_cinepack ? "REC writes .CIX — PC: cinepack_to_mlv.py" : "Press REC for MLV.");
         beep();
     }
     else

@@ -30,7 +30,7 @@ static const char * fmt_opts[] = {
     "MLV 10-bit",
     "MLV LJ92 14-bit",
     "MLV LJ92 12-bit",
-    "CINEPACK Pro"
+    "CINEPACK Stream Pro"
 };
 
 static const char * sensor_opts[] = { "Sensor 100%", "Sensor 75%", "Sensor 50%", "Sensor 25%" };
@@ -256,7 +256,7 @@ void cinema_panel_draw(int y0, int body_h)
         "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "AUDIO"
     };
 
-    bmp_fill(COLOR_GRAY(8), 0, y0 - 8, 720, body_h + 16);
+    bmp_fill(COLOR_BLACK, 0, y0 - 8, 720, body_h + 16);
 
     int px = 24;
     int py = y0 + 4;
@@ -282,15 +282,15 @@ void cinema_panel_draw(int y0, int body_h)
 
         cine_ui_draw_row_card(px + 16, ry, pw - 32, row_h - 6, CINE_COLOR_CINEMA, sel);
         bfnt_draw_char(row_icons[panel_row], px + 28, ry + 10,
-            sel ? CINE_COLOR_CINEMA : COLOR_GRAY(55), sel ? COLOR_GRAY(42) : COLOR_GRAY(18));
+            sel ? CINE_COLOR_CINEMA : COLOR_WHITE, sel ? COLOR_BLACK : CINE_COLOR_CINEMA);
         int fg = sel ? CINE_COLOR_CINEMA : COLOR_WHITE;
-        int bg = sel ? COLOR_GRAY(42) : COLOR_GRAY(18);
+        int bg = sel ? COLOR_BLACK : CINE_COLOR_CINEMA;
         bmp_printf(FONT(FONT_LARGE, fg, bg), px + 72, ry + 14, "%s", label);
         if (sel)
             bmp_printf(FONT(FONT_MED, CINE_COLOR_CINEMA, bg), px + pw - 72, ry + 16, "< >");
     }
 
-    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(55), COLOR_BLACK), px + 20, py + ph - 28,
+    bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), px + 20, py + ph - 28,
         "L/R change   SET apply   MENU back");
 }
 
