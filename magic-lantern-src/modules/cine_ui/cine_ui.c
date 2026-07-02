@@ -10,6 +10,9 @@
 #include <propvalues.h>
 #include <fps.h>
 
+extern void cine_record_init(void);
+extern unsigned int cine_record_keypress(unsigned int key);
+
 static CONFIG_INT("cine.dashboard", cinema_dashboard, 1);
 static CONFIG_INT("cine.lite.lv", cinema_lite_lv, 0);
 
@@ -74,6 +77,12 @@ static struct menu_entry cine_ui_menu[] =
                 .select = menu_open_submenu,
                 .help = "Where to find performance controls (nothing moved or removed).",
                 .children = (struct menu_entry[]) {
+                    {
+                        .name = "Cinema Record UI",
+                        .help = "Movie > Cinema Record",
+                        .help2 = "Sony-style full-screen scroll: resolution, aspect,\n"
+                                  "bit depth, FPS and anamorphic in one place.",
+                    },
                     {
                         .name = "Recording readout %",
                         .help = "Movie > Crop mode > Recording readout %",
@@ -218,6 +227,7 @@ static unsigned int cine_ui_init(void)
 {
     cine_ui_menu[0].children[0].priv = menu_cine_colors_var();
     menu_add("Display", cine_ui_menu, COUNT(cine_ui_menu));
+    cine_record_init();
     lvinfo_add_items(cine_lv_items, COUNT(cine_lv_items));
     return 0;
 }
@@ -235,10 +245,17 @@ MODULE_INFO_END()
 MODULE_CONFIGS_START()
     MODULE_CONFIG(cinema_dashboard)
     MODULE_CONFIG(cinema_lite_lv)
+    MODULE_CONFIG(cine_res)
+    MODULE_CONFIG(cine_aspect)
+    MODULE_CONFIG(cine_depth)
+    MODULE_CONFIG(cine_fps)
+    MODULE_CONFIG(cine_anam)
+    MODULE_CONFIG(cine_auto_apply)
 MODULE_CONFIGS_END()
 
 MODULE_PROPHANDLERS_START()
 MODULE_PROPHANDLERS_END()
 
 MODULE_CBRS_START()
+    MODULE_CBR(CBR_KEYPRESS, cine_record_keypress, 0)
 MODULE_CBRS_END()
