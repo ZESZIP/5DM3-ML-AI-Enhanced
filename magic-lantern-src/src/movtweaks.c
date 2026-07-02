@@ -985,6 +985,7 @@ void movtweak_task_init()
 }
 
 static struct menu_entry mov_menus[] = {
+    MENU_PLACEHOLDER("Cinema Record"),
     #ifdef FEATURE_MOVIE_RECORDING_50D
     {
         .name       = "Movie Record",

@@ -229,7 +229,7 @@ static void cine_draw_screen(void)
     bmp_fill(COLOR_ORANGE, 0, 0, 720, 6);
 
     int title_fnt = FONT(FONT_CANON, COLOR_WHITE, COLOR_BLACK);
-    bmp_printf(title_fnt, 20, 14, "CINEMA RECORD");
+    bmp_printf(title_fnt, 20, 14, "AI CINEMA RECORD");
 
     int sub_fnt = FONT(FONT_MED, COLOR_GRAY(45), COLOR_BLACK);
     bmp_printf(sub_fnt, 20, 48, "Scroll: value   Up/Dn: row   SET: apply now");

@@ -215,7 +215,7 @@ int get_menu_edit_mode() { return edit_mode; }
 //~ static CONFIG_INT("menu.transparent", semitransparent, 0);
 
 //static CONFIG_INT("menu.first", menu_first_by_icon, ICON_i);
-static CONFIG_INT("menu.first", menu_first_by_icon, ICON_ML_INFO);
+static CONFIG_INT("menu.first", menu_first_by_icon, ICON_ML_MOVIE);
 static CONFIG_INT("menu.cine.colors", menu_cine_colors, 1);
 
 int menu_cine_colors_enabled(void) { return menu_cine_colors; }

@@ -9,7 +9,9 @@
 #include <property.h>
 #include <propvalues.h>
 #include <fps.h>
+#include <ml-cbr.h>
 
+extern int ml_started;
 extern void cine_record_init(void);
 extern unsigned int cine_record_keypress(unsigned int key);
 
@@ -111,6 +113,16 @@ static struct menu_entry cine_ui_menu[] =
     },
 };
 
+static LVINFO_UPDATE_FUNC(cine_brand_update)
+{
+    LVINFO_BUFFER(16);
+    if (!lv) { item->width = 0; return; }
+    snprintf(buffer, sizeof(buffer), "AI-CINEMA");
+    item->color_fg = COLOR_ORANGE;
+    item->color_bg = COLOR_BLACK;
+    item->priority = 11;
+}
+
 static LVINFO_UPDATE_FUNC(cine_fps_update)
 {
     LVINFO_BUFFER(16);
@@ -187,6 +199,13 @@ static LVINFO_UPDATE_FUNC(cine_rec_update)
 static struct lvinfo_item cine_lv_items[] =
 {
     {
+        .name = "AI Cinema brand",
+        .which_bar = LV_PREFER_TOP_BAR,
+        .update = cine_brand_update,
+        .preferred_position = -50,
+        .priority = 11,
+    },
+    {
         .name = "Cine FPS",
         .which_bar = LV_PREFER_TOP_BAR,
         .update = cine_fps_update,
@@ -223,6 +242,26 @@ static struct lvinfo_item cine_lv_items[] =
     },
 };
 
+static int cine_boot_msg_done = 0;
+
+static unsigned int cine_boot_notify_cbr(unsigned int unused)
+{
+    (void)unused;
+    if (cine_boot_msg_done || !ml_started) return 1;
+    if (!lv) return 1;
+
+    cine_boot_msg_done = 1;
+    NotifyBox(10000,
+        "5DM3 AI CINEMA 2026 loaded\n"
+        "\n"
+        "Delete = ML menu (Movie tab)\n"
+        "Open: Cinema Record\n"
+        "\n"
+        "Wrong build if Help lacks 'AI.Cinema'"
+    );
+    return 1;
+}
+
 static unsigned int cine_ui_init(void)
 {
     cine_ui_menu[0].children[0].priv = menu_cine_colors_var();
@@ -258,4 +297,5 @@ MODULE_PROPHANDLERS_END()
 
 MODULE_CBRS_START()
     MODULE_CBR(CBR_KEYPRESS, cine_record_keypress, 0)
+    MODULE_CBR(CBR_SECONDS_CLOCK, cine_boot_notify_cbr, 0)
 MODULE_CBRS_END()
