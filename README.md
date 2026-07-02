@@ -203,3 +203,36 @@ the specific MLV format used requiring some more post-processing to be usable: a
 Cinema DNG conversion can be performed using a batch converter, via the MLVApp software or via the MLVFS tool (creating some kind of virtual drive doing live conversions of MLV to DNG files).
 
 One common habit with MLV to reduce the data size amount and go back to a more comfortable workflow is to perform a pre-grade operation over the MLV file (right after the debayering process) in order to optimize the image features (contrast, sharpness, color balance, noise reduction etc.), then encode the output using a more regular high-end video format like Apple ProRes 444, using optionally the dedicated ML Log profile to increase the dynamic range (see before), then you can easily ingest and work with this intermediate high-quality output.
+
+2026 UI/UX + performance workflow (5D3)
+This repository currently ships firmware artifacts (`autoexec.bin`, `ML-SETUP.FIR`) and documentation. Since source files are not included here, the practical update added in this branch is a settings optimizer + UI profile model you can use to configure your camera more consistently.
+
+New files
+- `tools/5d3_optimizer.py`: calculates expected write bandwidth, recommends Live View downscale percent, and outputs a modernized settings bundle.
+- `ui/5d3_2026_profile.json`: UI/UX model for grouped controls (Live View, Recording, Power & Thermal) with recommended presets.
+
+Goals covered
+- Ease processor load by downscaling Live View with a percentage dial.
+- Improve recording stability while keeping high image quality.
+- Support high-FPS planning (including experimental 120fps profiles with crop/reduced resolution assumptions).
+- Add power behavior controls for disabling auto power off and optional force-run behavior.
+- Add thermal policy modes, including explicit unsafe modes gated by an opt-in flag.
+
+Run the optimizer
+Example: high quality cinema profile
+
+`python3 tools/5d3_optimizer.py --width 3840 --height 1606 --fps 23.976 --bit-depth 12 --compression-ratio 1.7 --card-write-mbps 145 --disable-auto-power-off`
+
+Example: experimental 120fps planning profile
+
+`python3 tools/5d3_optimizer.py --width 1920 --height 800 --fps 120 --bit-depth 10 --compression-ratio 1.9 --card-write-mbps 145 --disable-auto-power-off --thermal-policy aggressive --liveview-percent 35`
+
+Example: force-through mode (unsafe, explicit opt-in required)
+
+`python3 tools/5d3_optimizer.py --width 1920 --height 800 --fps 120 --bit-depth 10 --disable-auto-power-off --force-run-on-failure --thermal-policy unsafe-no-cutoff --allow-unsafe`
+
+Notes
+- The helper exits with code `2` when warnings are present (for automation pipelines).
+- If required bandwidth exceeds measured card write speed, settings are likely unstable.
+- `unsafe-no-cutoff` and `force-run-on-failure` are intentionally gated by `--allow-unsafe`.
+- For 5D3, 120fps is usually only realistic with crop/reduced dimensions and reduced bit depth.

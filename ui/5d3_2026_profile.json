@@ -1,0 +1,145 @@
+{
+  "profileVersion": "2026.1",
+  "camera": "Canon 5D Mark III",
+  "uiSections": [
+    {
+      "id": "live-view",
+      "title": "Live View",
+      "controls": [
+        {
+          "id": "liveViewResolutionPercent",
+          "label": "Live View Resolution (%)",
+          "type": "dial",
+          "range": {
+            "min": 25,
+            "max": 100,
+            "step": 5
+          },
+          "default": 65,
+          "description": "Downscale preview to reduce processor load while preserving raw recording quality."
+        },
+        {
+          "id": "previewLowResHdmi",
+          "label": "Force Low-Res HDMI Preview",
+          "type": "toggle",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "recording",
+      "title": "Recording",
+      "controls": [
+        {
+          "id": "targetResolution",
+          "label": "Recording Resolution",
+          "type": "text",
+          "default": "3840x1606"
+        },
+        {
+          "id": "targetFps",
+          "label": "Target FPS",
+          "type": "dial",
+          "range": {
+            "min": 23.976,
+            "max": 120.0,
+            "step": 0.001
+          },
+          "default": 23.976
+        },
+        {
+          "id": "bitDepth",
+          "label": "Bit Depth",
+          "type": "select",
+          "options": [
+            10,
+            12,
+            14
+          ],
+          "default": 12
+        }
+      ]
+    },
+    {
+      "id": "power-thermal",
+      "title": "Power & Thermal",
+      "controls": [
+        {
+          "id": "disableAutoPowerOff",
+          "label": "Disable Auto Power Off",
+          "type": "toggle",
+          "default": true
+        },
+        {
+          "id": "forceRunOnFailure",
+          "label": "Continue on Recoverable Failure",
+          "type": "toggle",
+          "default": false
+        },
+        {
+          "id": "thermalPolicy",
+          "label": "Thermal Policy",
+          "type": "select",
+          "options": [
+            "safe",
+            "balanced",
+            "aggressive",
+            "unsafe-no-cutoff"
+          ],
+          "default": "balanced"
+        },
+        {
+          "id": "thermalWarningC",
+          "label": "Thermal Warning (C)",
+          "type": "dial",
+          "range": {
+            "min": 65,
+            "max": 95,
+            "step": 1
+          },
+          "default": 78
+        },
+        {
+          "id": "thermalHardCutC",
+          "label": "Thermal Hard Cut (C)",
+          "type": "dial",
+          "range": {
+            "min": 70,
+            "max": 100,
+            "step": 1
+          },
+          "default": 85
+        }
+      ]
+    }
+  ],
+  "recommendedPresets": [
+    {
+      "id": "cinema-quality",
+      "resolution": "3840x1606",
+      "fps": 23.976,
+      "bitDepth": 12,
+      "compressionRatio": 1.7,
+      "liveViewResolutionPercent": 80,
+      "thermalPolicy": "balanced"
+    },
+    {
+      "id": "hybrid-speed",
+      "resolution": "3072x1308",
+      "fps": 48.0,
+      "bitDepth": 12,
+      "compressionRatio": 1.8,
+      "liveViewResolutionPercent": 65,
+      "thermalPolicy": "aggressive"
+    },
+    {
+      "id": "high-fps-120-experimental",
+      "resolution": "1920x800",
+      "fps": 120.0,
+      "bitDepth": 10,
+      "compressionRatio": 1.9,
+      "liveViewResolutionPercent": 35,
+      "thermalPolicy": "aggressive"
+    }
+  ]
+}
