@@ -21,16 +21,18 @@ Full-screen wizard with **progress bar**:
 6. Save config
 
 ### Delete menu (Trash)
-- **No classic Magic Lantern chrome** (gray footer, ML scroll arrows, version spam)
-- **850ms branded splash:** film icon + **CINE AI ENHANCED** + *A branch of Magic Lantern*
+- **No classic Magic Lantern chrome** (gray footer, ML scroll arrows, beta warning, version spam)
+- Short branded splash: film icon + **CINE AI ENHANCED**
 - Five-page nav + chunky pro lists + orange **CINE** canvas
-- Footer: `CINE AI ENHANCED | Branch of Magic Lantern`
+- **SET on CINE rows opens thick in-window panels** — resolution, FPS, format, gamma, shutter, ISO, WB, audio
+- Built-in help (`cinema_help.c` + `ML/doc/menuidx.dat`) — no “help files not found”
+- Footer: `CINE AI ENHANCED` + live CF speed / profile / READY
 - Closing menu re-calibrates profile from your settings
 
 ### Day-to-day
 Pick options on the **CINE** page → OS auto-calibrates crop/MLV/FPS → press record.
 
-*Files: `cinema_boot.c`, `cinema_os.c`, `menu.c`*
+*Files: `cinema_boot.c`, `cinema_os.c`, `cinema_panels.c`, `cinema_help.c`, `menu.c`*
 
 ---
 

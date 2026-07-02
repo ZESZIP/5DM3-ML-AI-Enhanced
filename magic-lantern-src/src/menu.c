@@ -42,6 +42,7 @@
 #include "powersave.h"
 #include "cinema_os.h"
 #include "cinema_boot.h"
+#include "cinema_panels.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -4299,7 +4300,7 @@ void menus_display(
     if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
         cinema_os_draw_status_footer();
 
-    if (cinema_boot_menu_splash_blocking())
+    if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
         cinema_boot_draw_menu_splash();
     
     give_semaphore( menu_sem );
@@ -4915,7 +4916,7 @@ menu_redraw_do()
             bfnt_draw_char(ICON_ML_Q_BACK, 680, -5, COLOR_WHITE, NO_BG_ERASE);
         }
 
-        if (beta_should_warn())
+        if (beta_should_warn() && !cinema_os_enabled())
             draw_beta_warning();
         
         #ifdef CONFIG_CONSOLE
@@ -5325,6 +5326,12 @@ handle_ml_menu_keys(struct event * event)
     {
     case BGMT_MENU:
     {
+        if (cinema_panel_is_open())
+        {
+            cinema_panel_close();
+            menu_damage = 1;
+            break;
+        }
         if (SUBMENU_OR_EDIT || menu_lv_transparent_mode || menu_help_active)
         {
             submenu_level = 0;
@@ -5477,9 +5484,17 @@ handle_ml_menu_keys(struct event * event)
         {
             if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
-                cinema_os_page_nav(1);
-                select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
+                    && cinema_os_handle_key(BGMT_WHEEL_RIGHT))
+                {
+                    menu_damage = 1;
+                }
+                else if (!cinema_panel_is_open())
+                {
+                    cinema_os_page_nav(1);
+                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                }
             }
             else
             {
@@ -5518,9 +5533,17 @@ handle_ml_menu_keys(struct event * event)
         {
             if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
-                cinema_os_page_nav(-1);
-                select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
+                    && cinema_os_handle_key(BGMT_WHEEL_LEFT))
+                {
+                    menu_damage = 1;
+                }
+                else if (!cinema_panel_is_open())
+                {
+                    cinema_os_page_nav(-1);
+                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
+                }
             }
             else
             {
@@ -6216,6 +6239,47 @@ static struct menu_entry * entry_find_by_name(const char* menu_name, const char*
     return ans;
 }
 
+int menu_goto_entry(const char * menu_name, const char * entry_name)
+{
+    if (!menu_name || !entry_name) return 0;
+
+    take_semaphore(menu_sem, 0);
+
+    struct menu_entry * entry = entry_find_by_name(menu_name, entry_name);
+    if (!entry)
+    {
+        give_semaphore(menu_sem);
+        return 0;
+    }
+
+    struct menu * parent = 0;
+    for (struct menu * menu = menus; menu; menu = menu->next)
+    {
+        if (streq(menu->name, menu_name))
+        {
+            parent = menu;
+            break;
+        }
+    }
+
+    submenu_level = 0;
+    if (parent)
+        select_menu_recursive(parent, entry_name);
+
+    if (entry->children)
+        menu_open_submenu(entry);
+
+#ifndef CONFIG_RELEASE_BUILD
+    beta_set_warned();
+#endif
+
+    mod_menu_dirty = 1;
+    menu_help_active = 0;
+    give_semaphore(menu_sem);
+    menu_redraw();
+    return 1;
+}
+
 static EXCLUDES(menu_sem)
 void select_menu_by_icon(int icon)
 {
@@ -6244,6 +6308,11 @@ menu_help_go_to_selected_entry(
 
     struct menu_entry * entry = get_selected_menu_entry(menu);
     if (!entry) return;
+    if (cinema_os_enabled())
+    {
+        if (menu_goto_entry(menu->name, entry->name))
+            return;
+    }
     menu_help_go_to_label((char*) entry->name, 0);
 }
 

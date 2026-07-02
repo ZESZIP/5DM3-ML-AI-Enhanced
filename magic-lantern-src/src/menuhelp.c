@@ -31,6 +31,8 @@
 #include "font.h"
 #include "menu.h"
 #include "menuhelp.h"
+#include "cinema_os.h"
+#include "cinema_help.h"
 
 extern int menu_help_active;
 static int current_page = 1;
@@ -101,11 +103,20 @@ void menu_help_show_page(int page)
     menu_help_active = 1;
     
 #ifndef CONFIG_RELEASE_BUILD
-    if (page == 1) { draw_beta_warning(); return; } // display this instead of the main About page
+    if (page == 1 && !cinema_os_enabled()) { draw_beta_warning(); return; }
 #endif
 
-    if (page == 0) { draw_404_page(); return; } // help page not found
-    if (page == -1) { draw_help_not_installed_page(); return; } // help page not found
+    if (page == 0) { draw_404_page(); return; }
+    if (page == -1)
+    {
+        if (cinema_os_enabled())
+        {
+            cinema_help_show_label(0);
+            return;
+        }
+        draw_help_not_installed_page();
+        return;
+    }
     
     char path[100];
     struct bmp_file_t * doc = (void*) -1;
@@ -135,6 +146,11 @@ void menu_help_show_page(int page)
         }
         else
         {
+            if (cinema_os_enabled())
+            {
+                cinema_help_show_label(0);
+                return;
+            }
             clrscr();
             bmp_printf(FONT_MED, 0, 0, "Could not load help page %s.", path);
         }
@@ -225,4 +241,10 @@ void menu_help_go_to_label(void* label, int delta)
     
     current_page = page;
     menu_help_active = 1;
+
+    if (page <= 0 && cinema_os_enabled() && label_adj[0])
+    {
+        cinema_help_show_label(label_adj);
+        return;
+    }
 }

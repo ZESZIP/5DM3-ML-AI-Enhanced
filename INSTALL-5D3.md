@@ -49,7 +49,9 @@ Five operational pages on a black nav bar (wheel left/right to switch):
 | ADD-ONS | Blue | Modules |
 | HACKS | Purple | Debug |
 
-**CINE page** — full orange canvas, chunky 56px rows, 9 scrollable settings. Footer shows live **CF MB/s** and auto **PROFILE**. SET opens linked ML control.
+**CINE page** — full orange canvas, chunky 56px rows, 9 scrollable settings. Footer shows live **CF MB/s** and auto **PROFILE**. **SET opens thick in-window panels** (no help-file popups).
+
+Help is built into Cine AI (`ML/doc/menuidx.dat` ships in the install zip). You should never see “help files not found”.
 
 ### Write engine (boot)
 

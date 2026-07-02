@@ -11,6 +11,7 @@
 #include "fio-ml.h"
 #include "version.h"
 #include "propvalues.h"
+#include "menu.h"
 #include "cinema_boot.h"
 #include "cinema_write_engine.h"
 
@@ -23,6 +24,8 @@ static char boot_card_label[32] = "No card";
 static char boot_hw_label[48] = "Canon 5D Mark III";
 static int boot_speed_centi = 0;
 
+extern int menu_redraw_blocked;
+
 int cinema_boot_complete(void) { return cinema_boot_done; }
 int cinema_boot_wizard_active(void) { return wizard_active; }
 
@@ -34,7 +37,7 @@ static void boot_draw_frame(int pct, const char * step)
 
     bmp_printf(FONT(FONT_CANON, COLOR_WHITE, COLOR_BLACK), 130, 130, "CINE AI ENHANCED");
     bmp_printf(FONT(FONT_MED, COLOR_GRAY(55), COLOR_BLACK), 95, 168,
-        "A branch of Magic Lantern");
+        "5D Mark III cinema recording OS");
 
     bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 40, 210, "%s", boot_hw_label);
     bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 40, 234, "%s", boot_card_label);
@@ -45,14 +48,16 @@ static void boot_draw_frame(int pct, const char * step)
     int bar_x = 40;
     int bar_y = 340;
     int bar_w = 640;
-    int bar_h = 28;
-    bmp_fill(COLOR_GRAY(30), bar_x, bar_y, bar_w, bar_h);
-    int fill = bar_w * pct / 100;
+    int bar_h = 32;
+    bmp_fill(COLOR_GRAY(20), bar_x, bar_y, bar_w, bar_h);
+    bmp_fill(COLOR_GRAY(35), bar_x + 2, bar_y + 2, bar_w - 4, bar_h - 4);
+    int fill = (bar_w - 4) * pct / 100;
     if (fill > 0)
-        bmp_fill(COLOR_ORANGE, bar_x, bar_y, fill, bar_h);
+        bmp_fill(COLOR_ORANGE, bar_x + 2, bar_y + 2, fill, bar_h - 4);
     bmp_draw_rect(COLOR_WHITE, bar_x, bar_y, bar_w, bar_h);
+    bmp_draw_rect(COLOR_ORANGE, bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2);
 
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), bar_x + bar_w - 60, bar_y + 4, "%d%%", pct);
+    bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_BLACK), bar_x + bar_w - 64, bar_y + 6, "%d%%", pct);
 
     if (pct >= 100)
     {
@@ -88,9 +93,33 @@ static void boot_detect_cards(void)
     }
 }
 
+static void boot_benchmark_with_progress(void)
+{
+    boot_draw_frame(38, "Benchmarking card write speed (please wait)...");
+    menu_redraw_blocked = 1;
+
+    int t0 = get_ms_clock();
+    cinema_write_benchmark_quiet();
+    int elapsed = get_ms_clock() - t0;
+
+    boot_speed_centi = cinema_write_speed_centi_mbs();
+    if (boot_speed_centi > 0)
+    {
+        struct card_info * c = get_shooting_card();
+        if (c)
+            snprintf(boot_card_label, sizeof(boot_card_label), "%s  %d.%02d MB/s",
+                c->type, boot_speed_centi / 100, boot_speed_centi % 100);
+    }
+
+    int pct = 38 + MIN(22, elapsed / 150);
+    boot_draw_frame(pct, "Benchmark complete.");
+    msleep(300);
+}
+
 static void cinema_boot_run_wizard(void)
 {
     wizard_active = 1;
+    menu_redraw_blocked = 1;
 
     boot_detect_hardware();
     boot_step(5, "Scanning camera hardware...", 400);
@@ -101,18 +130,9 @@ static void cinema_boot_run_wizard(void)
     boot_step(25, "Running CF/SD integrity test...", 600);
     set_config_var("card.test", 1);
 
-    boot_step(40, "Benchmarking card write speed...", 300);
-    cinema_write_benchmark_quiet();
-    boot_speed_centi = cinema_write_speed_centi_mbs();
-    if (boot_speed_centi > 0)
-    {
-        struct card_info * c = get_shooting_card();
-        if (c)
-            snprintf(boot_card_label, sizeof(boot_card_label), "%s  %d.%02d MB/s",
-                c->type, boot_speed_centi / 100, boot_speed_centi % 100);
-    }
+    boot_benchmark_with_progress();
 
-    boot_step(60, "Arming recording engine & hacks...", 400);
+    boot_step(60, "Arming recording engine and performance hacks...", 400);
     cinema_write_arm_hacks();
 
     boot_step(75, "Calibrating MLV profile for your card...", 400);
@@ -125,6 +145,7 @@ static void cinema_boot_run_wizard(void)
     boot_step(100, "Setup complete.", 2500);
 
     wizard_active = 0;
+    menu_redraw_blocked = 0;
 }
 
 static void cinema_boot_task(void * unused)
@@ -139,7 +160,6 @@ static void cinema_boot_task(void * unused)
 
     if (!lv)
     {
-        /* wait for user to enter LiveView for card benchmark */
         int wait = 0;
         while (!lv && wait < 120)
         {
@@ -166,7 +186,8 @@ static void cinema_boot_task(void * unused)
 
 void cinema_boot_on_menu_open(void)
 {
-    menu_splash_until = get_ms_clock() + 850;
+    if (wizard_active) return;
+    menu_splash_until = get_ms_clock() + 600;
 }
 
 void cinema_boot_draw_menu_splash(void)
@@ -181,9 +202,7 @@ void cinema_boot_draw_menu_splash(void)
     bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
     bfnt_draw_char(ICON_ML_MOVIE, 310, 100, COLOR_ORANGE, NO_BG_ERASE);
     bmp_printf(FONT(FONT_CANON, COLOR_WHITE, COLOR_BLACK), 115, 175, "CINE AI ENHANCED");
-    bmp_printf(FONT(FONT_MED, COLOR_GRAY(55), COLOR_BLACK), 72, 215,
-        "A branch of Magic Lantern");
-    bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 200, 260, "Loading...");
+    bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 220, 230, "Loading...");
 }
 
 int cinema_boot_menu_splash_blocking(void)

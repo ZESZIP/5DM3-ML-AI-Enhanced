@@ -313,6 +313,7 @@ extern void menu_add( const char * name, struct menu_entry * new_entry, int coun
 extern void menu_remove(const char * name, struct menu_entry * old_entry, int count);
 
 extern void select_menu_by_name(char* name, const char* entry_name);
+extern int menu_goto_entry(const char * menu_name, const char * entry_name);
 
 extern void
 menu_init( void );

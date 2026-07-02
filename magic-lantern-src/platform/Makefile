@@ -223,7 +223,9 @@ endif
 $(ZIP_DIR): | $(BUILD_DIR)
 	$(CP) $(TOP_DIR)/data/cropmks/*.bmp $(BUILD_DIR)/zip/ML/cropmks
 	$(CP) $(TOP_DIR)/data/vram/*.lut $(BUILD_DIR)/zip/ML/data
+	@mkdir -p $(BUILD_DIR)/zip/ML/doc
 	-$(CP) -v $(TOP_DIR)/doc/cam/* $(BUILD_DIR)/zip/ML/doc
+	-$(CP) -v $(TOP_DIR)/data/cine_help/menuidx.dat $(BUILD_DIR)/zip/ML/doc/
 	$(CP) $(TOP_DIR)/data/fonts/*.rbf $(BUILD_DIR)/zip/ML/fonts
 	$(CP) $(TOP_DIR)/scripts/*.lua $(BUILD_DIR)/zip/ML/scripts
 	$(CP) $(TOP_DIR)/scripts/lib/*.lua $(BUILD_DIR)/zip/ML/scripts/lib
@@ -323,6 +325,8 @@ ML_SRC_OBJS_00 = \
     edmac.o \
     menu.o \
     cinema_os.o \
+    cinema_panels.o \
+    cinema_help.o \
     cinema_governor.o \
     cinema_write_engine.o \
     cinema_boot.o \
