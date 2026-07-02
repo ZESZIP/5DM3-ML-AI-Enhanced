@@ -264,8 +264,8 @@ void cinema_os_draw_nav_bar(int y)
 {
     int bar_h = CINE_NAV_H;
     int active_c = cinema_os_page_color(cinema_os_active_page());
-    bmp_fill(COLOR_BLACK, 0, y, 720, bar_h);
-    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
+
+    cine_ui_draw_backdrop(0, y, 720, bar_h, active_c);
 
     int tile_w = 720 / CINE_PAGE_COUNT;
     cinema_os_page_t active = cinema_os_active_page();
@@ -277,6 +277,8 @@ void cinema_os_draw_nav_bar(int y)
         int sel = (i == (int) active);
         cine_ui_draw_hd_nav_tab(x, y, tile_w, bar_h, color, sel, page_labels[i], page_icons[i]);
     }
+
+    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
 }
 
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)

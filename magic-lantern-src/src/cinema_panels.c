@@ -257,6 +257,7 @@ void cinema_panel_draw(int y0, int body_h)
     };
 
     bmp_fill(COLOR_BLACK, 0, y0 - 8, 720, body_h + 16);
+    cine_ui_draw_veil_20(0, y0 - 8, 720, body_h + 16);
 
     int px = 24;
     int py = y0 + 4;
