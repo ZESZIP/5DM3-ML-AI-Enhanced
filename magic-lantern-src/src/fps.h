@@ -40,4 +40,7 @@ int get_frame_aperture();
 
 int fps_get_iso_correction_evx8();
 
+/* request FPS timer patch after programmatic fps.override.idx change */
+void fps_request_update(void);
+
 #endif

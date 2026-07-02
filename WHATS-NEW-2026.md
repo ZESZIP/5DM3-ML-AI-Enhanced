@@ -9,7 +9,33 @@ source tree at commit `ed3e7c0d`. The full, buildable source (with our changes) 
 Install is unchanged: copy `autoexec.bin`, `ML-SETUP.FIR` and the `ML/` folder to your
 card root. No network, phone app, or PC tool required.
 
-## Phase 2: Cinema UI / split preview vs recording (this update)
+## Phase 3: Sony-style Cinema Record UI (this update)
+
+### One-screen recording setup — `Movie → Cinema Record`
+
+A full-screen scroll menu (Sony-style): big labels, orange highlight row, immediate
+apply to crop mode + MLV + FPS when you change any value.
+
+| Row | Options |
+|-----|---------|
+| **Resolution** | 720p, 1080p, 2.7K, 4K, 6K |
+| **Aspect** | 16:9, 2.39:1, 2.35:1, 2:1, 4:3, 1:1 (auto-crops sensor via MLV) |
+| **Bit depth** | 14-bit, 12-bit, 10-bit, 8-bit (lossless where supported) |
+| **Frame rate** | 24, 25, 50, 60, 100, 120 fps |
+| **Anamorphic** | OFF / 2x squeeze (LiveView preview stretch) |
+
+**Controls:** joystick or wheel left/right changes value; up/down changes row; SET applies
+immediately. Auto-apply on scroll is ON by default (400 ms debounce after crop changes).
+
+This drives the same backends as the classic menus (`crop_rec`, `mlv_lite`, `fps-engio`) —
+nothing removed, just unified. High FPS / 4K / 6K still clamp to what the 5D3 sensor and
+your card can sustain.
+
+*Files: `magic-lantern-src/modules/cine_ui/cine_record.c`*
+
+---
+
+## Phase 2: Cinema UI / split preview vs recording
 
 ### Recording readout % vs Preview scale %
 

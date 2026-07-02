@@ -770,6 +770,11 @@ static int fps_get_timer(int fps_x1000)
 static int written_value_a = 0;
 static int written_value_b = 0;
 static int fps_needs_updating = 0;
+
+void fps_request_update(void)
+{
+    if (get_fps_override()) fps_needs_updating = 1;
+}
 /*int fps_was_changed_by_canon()
 {
     int ans =

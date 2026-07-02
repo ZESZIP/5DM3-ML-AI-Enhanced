@@ -1,5 +1,5 @@
 MODULE_NAME = cine_ui
-MODULE_OBJS = $(BUILD_DIR)/cine_ui.o
+MODULE_OBJS = $(BUILD_DIR)/cine_ui.o $(BUILD_DIR)/cine_record.o
 TOP_DIR = ../..
 
 include $(TOP_DIR)/modules/Makefile
