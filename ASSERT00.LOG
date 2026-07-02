@@ -1,0 +1,13 @@
+ML ASSERT:
+0
+at mlv_lite.c:2748 (compress_task), task compress_task
+lv:1 mode:3
+
+compress_task stack: 1ac530 [1ac5c0-1ab5c0]
+0xUNKNOWN  @ c19e44:1ac560
+0x00070EF8 @ b1a68:1ac530
+
+Magic Lantern version: CINE.AI.ENHANCED.5D3
+Git commit: 16d015b cursor/cine-ai-ui-fix-help-4a83
+Built on 2026-07-02 17:18:47 UTC by ubuntu@cursor.
+Free Memory  : 191K + 1876K
