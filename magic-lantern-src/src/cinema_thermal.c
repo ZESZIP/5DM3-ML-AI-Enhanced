@@ -11,8 +11,8 @@
 
 static CONFIG_INT("cinema.thermal.enable", cinema_thermal_enable, 1);
 
-#define CINE_THERMAL_WARN_C      68
-#define CINE_THERMAL_SHUTDOWN_C  78
+#define CINE_THERMAL_WARN_C      92
+#define CINE_THERMAL_SHUTDOWN_C  100
 
 static int thermal_warn_active = 0;
 static int thermal_shutdown_sent = 0;
@@ -42,8 +42,7 @@ void cinema_thermal_tick(void)
         if (!thermal_shutdown_sent)
         {
             thermal_shutdown_sent = 1;
-            set_config_var("idle.never.poweroff", 0);
-            NotifyBox(5000, "Thermal %dC — Canon shutdown", t);
+            NotifyBox(5000, "Thermal %dC — shutdown at 100C", t);
             beep();
             msleep(400);
             int req = 0;
@@ -55,8 +54,7 @@ void cinema_thermal_tick(void)
     if (t >= CINE_THERMAL_WARN_C)
     {
         thermal_warn_active = 1;
-        if (RECORDING)
-            set_config_var("idle.never.poweroff", 0);
+        /* keep recording — only warn, do not trigger Canon shutdown early */
     }
     else
     {
