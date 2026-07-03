@@ -44,7 +44,9 @@ Five operational pages on a black nav bar (wheel left/right to switch):
 | Tab | Color | Purpose |
 |-----|-------|---------|
 | SETTINGS | Yellow | Prefs |
-| PHOTO | Green | **Classic ML Shoot menu** (standard tab bar, no Cinema chrome) |
+| PHOTO | Green | Shoot (Cinema OS chrome — same nav as other sections) |
+
+**Navigation:** Main dial **left/right** switches section (SETTINGS / PHOTO / CINE / …). **Wheel up/down** scrolls menu rows.
 | **CINE** | **Orange** | Recording sensing / settings list |
 | ADD-ONS | Blue | Modules |
 | HACKS | Purple | Debug |

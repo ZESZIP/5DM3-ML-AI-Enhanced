@@ -2771,7 +2771,7 @@ entry_print(
     int x_font_offset = 0;
     int y_font_offset = (h - (int)font_large.height) / 2;
 
-    if (cinema_os_skin_active() && !menu_lv_transparent_mode && !junkie_mode)
+    if (cinema_os_skin_active() && !menu_lv_transparent_mode)
     {
         int accent = cinema_os_page_color(cinema_os_active_page());
         if (in_submenu)
@@ -3017,7 +3017,7 @@ skip_name:
     // selection bar
     if (entry->selected)
     {
-        int cine_os_row = cinema_os_skin_active() && !menu_lv_transparent_mode && !junkie_mode
+        int cine_os_row = cinema_os_skin_active() && !menu_lv_transparent_mode
             && (in_submenu || !submenu_level);
 
         int color_left = 45;
@@ -4061,7 +4061,7 @@ menu_display_junkie(
 static void
 show_hidden_items(struct menu * menu, int force_clear)
 {
-    if (cinema_os_skin_active() && !junkie_mode)
+    if (cinema_os_skin_active() && !menu_lv_transparent_mode)
         return;
     // show any items that may be hidden
     if (!menu_lv_transparent_mode)
@@ -4214,7 +4214,7 @@ void menus_display(
 
     if (customize_mode) fgs = get_customize_color();
 
-    if (cinema_os_skin_active())
+    if (cinema_os_skin_active() && !menu_lv_transparent_mode)
     {
         cinema_os_draw_nav_bar(y);
         if (!submenu && !cinema_os_uses_cinematic_canvas())
@@ -4228,7 +4228,7 @@ void menus_display(
         bmp_fill(bgu, orig_x, y, 720, 42);
     }
 
-    int list_y_base = y + (cinema_os_skin_active() && !junkie_mode
+    int list_y_base = y + (cinema_os_skin_active() && !menu_lv_transparent_mode
         ? (cinema_os_uses_cinematic_canvas() && !submenu_level
             ? cinema_os_tab_bar_height() + 40
             : cinema_os_tab_bar_height() + 34)
@@ -4241,7 +4241,7 @@ void menus_display(
         if (IS_SUBMENU(menu))
             continue;
 
-        if (!cinema_os_skin_active() || junkie_mode || menu_lv_transparent_mode)
+        if (!cinema_os_skin_active() || menu_lv_transparent_mode)
         {
         int fg = menu->selected ? fgs : fgu;
         int bg = menu->selected ? bgs : bgu;
@@ -4340,14 +4340,14 @@ void menus_display(
         //~ dim_screen(43, COLOR_BLACK, 0, 45, 720, 480-45-50);
         
         submenu_display(submenu);
-        if (!cinema_os_skin_active() || junkie_mode || menu_lv_transparent_mode)
+        if (!cinema_os_skin_active() || menu_lv_transparent_mode)
             show_vscroll(submenu);
     }
 
     if (cinema_os_skin_active() && !submenu_level)
         cinema_os_draw_status_footer();
 
-    if (cinema_os_skin_active() && !junkie_mode && !submenu_level)
+    if (cinema_os_skin_active() && !menu_lv_transparent_mode && !submenu_level)
         cine_debug_draw_overlay();
 
     if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
@@ -5542,24 +5542,16 @@ handle_ml_menu_keys(struct event * event)
         {
             if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
-                if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
-                    && cinema_os_handle_key(BGMT_WHEEL_RIGHT))
+                if (cinema_panel_is_open() && cinema_os_uses_cinematic_canvas()
+                    && cinema_panel_handle_key(BGMT_WHEEL_RIGHT))
                 {
-                    menu_damage = 1;
+                    /* panel consumed */
                 }
                 else if (!cinema_panel_is_open())
                 {
-                    if (cinema_os_uses_cinematic_canvas()
-                        && cinema_os_handle_lr_key(1))
-                    {
-                        menu_damage = 1;
-                    }
-                    else
-                    {
-                        cinema_os_page_nav(1);
-                        select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                        menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
-                    }
+                    cinema_os_page_nav_lr(1);
+                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
                 }
             }
             else
@@ -5599,24 +5591,16 @@ handle_ml_menu_keys(struct event * event)
         {
             if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
-                if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
-                    && cinema_os_handle_key(BGMT_WHEEL_LEFT))
+                if (cinema_panel_is_open() && cinema_os_uses_cinematic_canvas()
+                    && cinema_panel_handle_key(BGMT_WHEEL_LEFT))
                 {
-                    menu_damage = 1;
+                    /* panel consumed */
                 }
                 else if (!cinema_panel_is_open())
                 {
-                    if (cinema_os_uses_cinematic_canvas()
-                        && cinema_os_handle_lr_key(-1))
-                    {
-                        menu_damage = 1;
-                    }
-                    else
-                    {
-                        cinema_os_page_nav(-1);
-                        select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
-                        menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
-                    }
+                    cinema_os_page_nav_lr(-1);
+                    select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
+                    menu_first_by_icon = cinema_os_page_menu_icon(cinema_os_active_page());
                 }
             }
             else

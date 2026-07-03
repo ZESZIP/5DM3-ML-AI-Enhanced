@@ -113,6 +113,13 @@ void cinema_os_page_nav(int delta)
     cinema_os_set_page((cinema_os_page_t) p);
 }
 
+int cinema_os_page_nav_lr(int delta)
+{
+    if (!cinema_os_enabled()) return 0;
+    cinema_os_page_nav(delta);
+    return 1;
+}
+
 int cinema_os_page_color(cinema_os_page_t page)
 {
     if (page < 0 || page >= CINE_PAGE_COUNT) return COLOR_WHITE;
@@ -146,10 +153,7 @@ int cinema_os_uses_pro_shell(void)
 
 int cinema_os_skin_active(void)
 {
-    if (!cinema_os_enabled()) return 0;
-    /* PHOTO tab = standard ML Shoot menu (no custom chrome) */
-    if (cinema_os_active_page() == CINE_PAGE_PHOTO) return 0;
-    return 1;
+    return cinema_os_enabled();
 }
 
 void cinema_os_on_menu_open(void)
