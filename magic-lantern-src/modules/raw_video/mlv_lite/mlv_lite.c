@@ -286,6 +286,11 @@ static GUARDED_BY(settings_sem) int frame_size_uncompressed = 0;
 static GUARDED_BY(settings_sem) int configured_max_frame_size = 0;
 static GUARDED_BY(settings_sem) int configured_fullres_buf_size = 0;
 static GUARDED_BY(settings_sem) int configured_pre_recording_settings = 0;
+static GUARDED_BY(settings_sem) int configured_csp_stream = -1;
+
+/* CSP stream: one compress slot + sensor double-buffer only */
+#define CSP_STREAM_MAX_SLOTS 2
+static int preview_mode_for_csp = -1;
 
 static GUARDED_BY(LiveViewTask) int skip_x = 0;
 static GUARDED_BY(LiveViewTask) int skip_y = 0;
@@ -1424,6 +1429,9 @@ int add_mem_suite(struct memSuite * mem_suite, int chunk_index, int max_frame_si
             int group_size = 0;
             while (size >= max_frame_size && total_slot_count < COUNT(slots))
             {
+                if (mlv_cinepack_active() && valid_slot_count >= CSP_STREAM_MAX_SLOTS)
+                    break;
+
                 slots[total_slot_count].ptr = (void*) ptr;
                 slots[total_slot_count].status = SLOT_FREE;
                 slots[total_slot_count].size = max_frame_size;
@@ -1458,6 +1466,9 @@ int add_mem_suite(struct memSuite * mem_suite, int chunk_index, int max_frame_si
             
             add_reserved_slots((void*)ptr, group_size / max_frame_size);
 
+            if (mlv_cinepack_active() && valid_slot_count >= CSP_STREAM_MAX_SLOTS)
+                return chunk_index;
+
             /* next chunk */
             chunk = GetNextMemoryChunk(mem_suite, chunk);
         }
@@ -1473,6 +1484,7 @@ void free_buffers()
     configured_max_frame_size = 0;
     configured_fullres_buf_size = 0;
     configured_pre_recording_settings = 0;
+    configured_csp_stream = -1;
     total_slot_count = 0;
     valid_slot_count = 0;
 
@@ -1540,7 +1552,8 @@ int setup_buffers()
 
     if (configured_max_frame_size == max_frame_size &&
         configured_fullres_buf_size == fullres_buf_size &&
-        configured_pre_recording_settings == pre_recording_settings)
+        configured_pre_recording_settings == pre_recording_settings &&
+        configured_csp_stream == (mlv_cinepack_active() ? 1 : 0))
     {
         /* current configuration still valid, nothing to do */
         return 2;
@@ -1638,6 +1651,9 @@ int setup_buffers()
     configured_max_frame_size = max_frame_size;
     configured_fullres_buf_size = fullres_buf_size;
     configured_pre_recording_settings = pre_recording_settings;
+    configured_csp_stream = mlv_cinepack_active() ? 1 : 0;
+    if (configured_csp_stream)
+        printf("CSP stream: %d frame RAM slots (zero-buffer path)\n", valid_slot_count);
     return 1;
 }
 
@@ -2130,8 +2146,16 @@ void hack_liveview(int unhack)
         static int canon_gui_was_enabled;
         if (!unhack)
         {
-            canon_gui_was_enabled = !canon_gui_front_buffer_disabled();
-            canon_gui_disable_front_buffer();
+            /* CSP stream: keep Canon LV front buffer for passthrough + peaking overlay */
+            if (mlv_cinepack_stream_mode() && RAW_IS_RECORDING)
+            {
+                canon_gui_was_enabled = 0;
+            }
+            else
+            {
+                canon_gui_was_enabled = !canon_gui_front_buffer_disabled();
+                canon_gui_disable_front_buffer();
+            }
         }
         else if (canon_gui_was_enabled)
         {
@@ -3452,6 +3476,8 @@ void raw_video_rec_task()
             csp_write_sem = create_named_semaphore("csp_wr", SEM_CREATE_LOCKED);
         csp_first_frame = 1;
         pre_record = 0;
+        preview_mode_for_csp = preview_mode;
+        preview_mode = 1; /* Canon LV passthrough while recording CSP */
 
         int fps = fps_get_current_x1000();
         if (!mlv_cinepack_begin_file(f, res_x, res_y, fps, BPP))
@@ -3919,6 +3945,12 @@ cleanup:
     {
         hack_liveview(1);
     }
+
+    if (preview_mode_for_csp >= 0)
+    {
+        preview_mode = preview_mode_for_csp;
+        preview_mode_for_csp = -1;
+    }
     
     /* re-enable powersaving  */
     powersave_permit();
@@ -4350,6 +4382,10 @@ static int raw_rec_should_preview(void)
     if (!raw_video_enabled) return 0;
     if (!is_movie_mode()) return 0;
 
+    /* CSP stream: Canon passthrough + global_draw focus peaking, no ML raw preview */
+    if (mlv_cinepack_stream_mode() && RAW_IS_RECORDING)
+        return 0;
+
     /* keep x10 mode unaltered, for focusing */
     if (lv_dispsize == 10) return 0;
 
@@ -4594,7 +4630,6 @@ unsigned int mlv_lite_cine_arm(
     output_format = COERCE((int) fmt, 0, 5);
     preview_lv_scale_index = COERCE((int) preview_scale, 0, COUNT(preview_lv_scale_values) - 1);
     h264_proxy_menu = 0;
-    preview_mode = 2; /* ML framing preview */
     raw_video_enabled = 1;
 
     {
@@ -4604,6 +4639,7 @@ unsigned int mlv_lite_cine_arm(
         int fps_i = get_config_var("cine.rec.fps");
         int beast = get_config_var("cine.rec.beast");
         if (!quality) quality = 85;
+        preview_mode = pack ? 1 : 2; /* Canon passthrough when CSP armed */
         mlv_cinepack_arm(pack ? 1 : 0, quality, res_i, fps_i, beast);
         printf("mlv_lite_cine_arm: CSP pack=%d fmt=%d preview=%d\n",
             pack, output_format, preview_lv_scale_index);

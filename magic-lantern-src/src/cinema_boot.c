@@ -17,6 +17,7 @@
 #include "cinema_record_apply.h"
 #include "cinema_debug.h"
 #include "cinema_ui_theme.h"
+#include "cinema_gui_engine.h"
 #include "module.h"
 #include "property.h"
 
@@ -239,6 +240,7 @@ static void cinema_boot_task(void * unused)
     }
     else
     {
+        cinema_gui_init();
         cinema_write_arm_hacks();
         cinema_write_benchmark_quiet();
         cinema_write_apply_best_profile();
@@ -249,6 +251,7 @@ static void cinema_boot_task(void * unused)
 void cinema_boot_on_menu_open(void)
 {
     if (wizard_active) return;
+    cinema_gui_init();
     if (cinema_menu_splash_done) return;
     menu_splash_until = get_ms_clock() + 200;
     cinema_menu_splash_done = 1;

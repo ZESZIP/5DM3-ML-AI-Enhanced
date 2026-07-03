@@ -216,12 +216,14 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/zip/ML/doc
 	@mkdir -p $(BUILD_DIR)/zip/ML/fonts
 	@mkdir -p $(BUILD_DIR)/zip/ML/modules
+	@mkdir -p $(BUILD_DIR)/zip/ML/CINE_UI
 	@mkdir -p $(BUILD_DIR)/zip/ML/scripts/lib
 endif
 
 # copy in files that are never rebuilt
 $(ZIP_DIR): | $(BUILD_DIR)
 	$(CP) $(TOP_DIR)/data/cropmks/*.bmp $(BUILD_DIR)/zip/ML/cropmks
+	$(CP) $(TOP_DIR)/data/cine_ui/*.bmp $(BUILD_DIR)/zip/ML/CINE_UI
 	$(CP) $(TOP_DIR)/data/vram/*.lut $(BUILD_DIR)/zip/ML/data
 	@mkdir -p $(BUILD_DIR)/zip/ML/doc
 	-$(CP) -v $(TOP_DIR)/doc/cam/* $(BUILD_DIR)/zip/ML/doc
@@ -329,6 +331,7 @@ ML_SRC_OBJS_00 = \
     cinema_help.o \
     cinema_record_apply.o \
     cinema_ui_theme.o \
+    cinema_gui_engine.o \
     cinema_module_bridge.o \
     cine_codec.o \
     cine_stream.o \
