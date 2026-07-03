@@ -81,6 +81,7 @@ void cinema_os_get_entry_colors(
 /* Returns 1 if key consumed. Called from menu.c */
 int cinema_os_handle_key(unsigned int key);
 int cinema_os_handle_lr_key(int delta);
+int cinema_os_page_nav_lr(int delta);
 
 /* menu.c: sync ML top-level tab when page changes */
 const char * cinema_os_page_menu_name(cinema_os_page_t page);

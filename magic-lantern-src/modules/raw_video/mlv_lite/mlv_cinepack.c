@@ -350,12 +350,26 @@ int mlv_cinepack_write_frame(const void * payload, int size, int frame_num)
     fh.frame_number = (uint32_t) frame_num;
     fh.reserved = 0;
 
-    if (FIO_WriteFile(csp_file, &fh, sizeof(fh)) != sizeof(fh)) goto fail;
-    if (FIO_WriteFile(csp_file, payload, size) != (uint32_t) size) goto fail;
+    /* Single syscall: header + payload contiguous (fewer CF round-trips) */
+    static uint8_t * wr_buf = 0;
+    static int wr_cap = 0;
+    int total = (int) sizeof(fh) + size;
+    if (total > wr_cap)
+    {
+        if (wr_buf) free(wr_buf);
+        wr_cap = (total + 65535) & ~65535;
+        wr_buf = malloc(wr_cap);
+    }
+    if (!wr_buf) goto fail;
+
+    memcpy(wr_buf, &fh, sizeof(fh));
+    memcpy(wr_buf + sizeof(fh), payload, size);
+
+    if (FIO_WriteFile(csp_file, wr_buf, total) != (uint32_t) total) goto fail;
 
     csp_frames++;
     csp_bytes += (int64_t) sizeof(fh) + size;
-    if ((csp_frames % 32) == 0)
+    if ((csp_frames % 64) == 0)
         FIO_SeekSkipFile(csp_file, 0, SEEK_CUR);
     return 1;
 

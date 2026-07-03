@@ -290,7 +290,7 @@ static GUARDED_BY(settings_sem) int configured_pre_recording_settings = 0;
 static GUARDED_BY(settings_sem) int configured_csp_stream = -1;
 
 /* CSP stream: one compress slot + sensor double-buffer only */
-#define CSP_STREAM_MAX_SLOTS 2
+#define CSP_STREAM_MAX_SLOTS 3
 static int preview_mode_for_csp = -1;
 
 static GUARDED_BY(LiveViewTask) int skip_x = 0;
@@ -2696,6 +2696,15 @@ static void edmac_cbr_w(void *ctx)
     edmac_copy_rectangle_adv_cleanup();
 }
 
+static void csp_release_slot(int slot_index, int ok)
+{
+    slots[slot_index].status = SLOT_FREE;
+    if (csp_write_sem)
+        give_semaphore(csp_write_sem, 0);
+    if (!ok && !RAW_IS_IDLE)
+        buffer_full = 1;
+}
+
 static void compress_task()
 {
     ASSERT(compress_mq == 0);
@@ -2767,26 +2776,29 @@ static void compress_task()
                 fullSizeBuffer, frame_size_uncompressed,
                 res_x, res_y, mlv_cinepack_quality());
 
+            if (mlv_cinepack_stream_mode())
+            {
+                if (compressed_size > 0 && !RAW_IS_IDLE
+                    && mlv_cinepack_write_frame(out_ptr, compressed_size,
+                        slots[slot_index].frame_number - 1))
+                {
+                    if (frame_size_uncompressed > 0)
+                        measured_compression_ratio =
+                            compressed_size * 100 / frame_size_uncompressed;
+                    csp_release_slot(slot_index, 1);
+                    continue;
+                }
+                /* write or compress failed — must free slot or buffers deadlock */
+                if (!RAW_IS_IDLE)
+                    printf("[CSP] frame %d fail comp=%d\n",
+                        slots[slot_index].frame_number - 1, compressed_size);
+                csp_release_slot(slot_index, 0);
+                continue;
+            }
+
             if (compressed_size > 0 && !RAW_IS_IDLE)
             {
-                if (mlv_cinepack_stream_mode())
-                {
-                    if (mlv_cinepack_write_frame(out_ptr, compressed_size,
-                        slots[slot_index].frame_number - 1))
-                    {
-                        if (frame_size_uncompressed > 0)
-                            measured_compression_ratio =
-                                compressed_size * 100 / frame_size_uncompressed;
-                        slots[slot_index].status = SLOT_FREE;
-                        if (csp_write_sem)
-                            give_semaphore(csp_write_sem, 0);
-                        continue;
-                    }
-                }
-                else
-                {
-                    shrink_slot(slot_index, MIN(compressed_size, max_frame_size - VIDF_HDR_SIZE - 4));
-                }
+                shrink_slot(slot_index, MIN(compressed_size, max_frame_size - VIDF_HDR_SIZE - 4));
             }
         }
         else if (OUTPUT_COMPRESSION)
@@ -2961,8 +2973,11 @@ void process_frame(int next_fullsize_buffer_pos)
     }
     else
     {
-        /* card too slow */
+        /* card too slow or slots leaked */
         buffer_full = 1;
+        if (mlv_cinepack_stream_mode())
+            printf("[CSP] no free slot at frame %d (slots=%d)\n",
+                frame_count, valid_slot_count);
         return;
     }
 
