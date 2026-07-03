@@ -64,7 +64,7 @@ static void governor_set_label(const char * s)
 
 static void governor_csp_adjust(int tier)
 {
-    static const int targets[] = { 8500, 7200, 5800, 4500 };
+    static const int targets[] = { 10000, 8500, 7200, 5800 };
     if (tier >= COUNT(targets)) tier = COUNT(targets) - 1;
     governor_csp_tier = tier;
     int t = targets[tier];

@@ -11,9 +11,9 @@
 #define CINEPACK_FMT_CINEPACK  1
 
 /* Bitrate targets (centi-MB/s) — hard caps for continuous card fill */
-#define CINE_TARGET_1080P120_CENTIMBS 8500   /* 85 MB/s */
-#define CINE_TARGET_4K25_CENTIMBS     6500   /* 65 MB/s */
-#define CINE_TARGET_6K25_CENTIMBS     8800   /* 88 MB/s */
+#define CINE_TARGET_1080P120_CENTIMBS 10000  /* 100 MB/s */
+#define CINE_TARGET_4K25_CENTIMBS     8500   /* 85 MB/s */
+#define CINE_TARGET_6K25_CENTIMBS     9000   /* 90 MB/s */
 
 int cine_codec_enabled(void);
 int cine_codec_stream_mode(void);

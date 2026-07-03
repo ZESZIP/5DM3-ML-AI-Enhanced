@@ -332,6 +332,7 @@ ML_SRC_OBJS_00 = \
     cinema_record_apply.o \
     cinema_ui_theme.o \
     cinema_gui_engine.o \
+    cinema_menu_engine.o \
     cinema_record_boost.o \
     cinema_module_bridge.o \
     cine_codec.o \

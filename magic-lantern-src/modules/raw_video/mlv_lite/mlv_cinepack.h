@@ -8,9 +8,9 @@
 #define MLV_CSP_MAGIC 0x31505343
 #define MLV_CSP_FRAME_MAGIC 0x46505343
 
-#define MLV_TARGET_1080P120_CENTIMBS 8500
-#define MLV_TARGET_4K25_CENTIMBS     6500
-#define MLV_TARGET_6K25_CENTIMBS     8800
+#define MLV_TARGET_1080P120_CENTIMBS 10000  /* 100 MB/s */
+#define MLV_TARGET_4K25_CENTIMBS     8500   /* 85 MB/s */
+#define MLV_TARGET_6K25_CENTIMBS     9000   /* 90 MB/s */
 
 void mlv_cinepack_arm(int on, int quality, int res_idx, int fps_idx, int beast);
 int mlv_cinepack_active(void);
