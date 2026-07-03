@@ -45,6 +45,8 @@
 #include "cinema_panels.h"
 #include "cinema_ui_theme.h"
 #include "cinema_debug.h"
+#include "cinema_gui_engine.h"
+#include "cinema_menu_engine.h"
 
 #define CONFIG_MENU_ICONS
 //~ #define CONFIG_MENU_DIM_HACKS
@@ -245,6 +247,8 @@ static void menu_draw_icon(int x, int y, int type, intptr_t arg, int warn); // p
 static struct menu_entry * entry_find_by_name(const char* name, const char* entry_name);
 static struct menu_entry * get_selected_menu_entry(struct menu * menu);
 static void submenu_display(struct menu * submenu);
+static void entry_default_display_info(struct menu_entry * entry, struct menu_display_info * info);
+static char * pickbox_string(struct menu_entry * entry, int i);
 static void start_redraw_flood();
 static struct menu * menu_find_by_name(const char * name,  int icon);
 void menu_toggle_submenu();
@@ -2427,6 +2431,60 @@ static void submenu_key_hint(int x, int y, int fg, int bg, int chr)
     bfnt_draw_char(chr, x, y-5, fg, NO_BG_ERASE);
 }
 
+struct menu * menu_cinema_get_active_tab(void) { return get_selected_toplevel_menu(); }
+struct menu * menu_cinema_get_submenu(void) { return get_current_submenu(); }
+int menu_cinema_submenu_level(void) { return submenu_level; }
+int menu_cinema_edit_mode(void) { return edit_mode; }
+int menu_cinema_entry_visible(struct menu_entry * entry) { return is_visible(entry); }
+
+void menu_cinema_fill_entry_info(
+    struct menu * menu,
+    struct menu_entry * entry,
+    struct menu_display_info * info)
+{
+    entry_default_display_info(entry, info);
+    info->can_custom_draw = 0;
+    if (entry->update)
+        entry->update(entry, info);
+    (void) menu;
+}
+
+void menu_cinema_draw_pickbox(struct menu_entry * entry, int x0, int y0, int accent)
+{
+    if (!entry) return;
+    int lo = entry->min;
+    int hi = entry->max;
+    int sel = SELECTED_INDEX(entry) + lo;
+
+    if (hi - lo > 12)
+    {
+        lo = MAX(lo, sel - 6);
+        hi = MIN(hi, lo + 12);
+    }
+
+    int h = 40 * (hi - lo + 1);
+    if (y0 + h > 410)
+        y0 = 410 - h;
+
+    cine_ui_draw_glass_panel(x0 - 8, y0 - 4, 640, h + 8);
+
+    for (int i = lo; i <= hi; i++)
+    {
+        int ry = y0 + (i - lo) * 40;
+        int selected = (i == sel);
+        if (selected)
+            cinema_gui_draw_crystal_row(x0, ry, 620, 36, accent, 115);
+        else
+            bmp_fill(COLOR_GRAY(18), x0, ry, 620, 36);
+
+        const char * label = pickbox_string(entry, i);
+        cinema_gui_draw_text_shadow(
+            selected ? FONT_CANON : FONT_LARGE,
+            x0 + 12, ry + (selected ? 6 : 8),
+            label, COLOR_WHITE);
+    }
+}
+
 static void menu_clean_footer()
 {
     if (cinema_os_skin_active())
@@ -4216,17 +4274,16 @@ void menus_display(
 
     if (cinema_os_skin_active() && !menu_lv_transparent_mode)
     {
-        cinema_os_draw_nav_bar(y);
-        if (!submenu && !cinema_os_uses_cinematic_canvas())
-        {
-            int y0 = cinema_os_tab_bar_height();
-            cinema_os_draw_page_background(cinema_os_active_page(), y0, 480 - y0 - 50);
-        }
+        cinema_menu_engine_draw(y);
+
+        if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
+            cinema_boot_draw_menu_splash();
+
+        give_semaphore( menu_sem );
+        return;
     }
-    else
-    {
-        bmp_fill(bgu, orig_x, y, 720, 42);
-    }
+
+    bmp_fill(bgu, orig_x, y, 720, 42);
 
     int list_y_base = y + (cinema_os_skin_active() && !menu_lv_transparent_mode
         ? (cinema_os_uses_cinematic_canvas() && !submenu_level

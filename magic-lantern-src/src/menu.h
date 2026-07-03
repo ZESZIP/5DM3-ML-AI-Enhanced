@@ -416,6 +416,15 @@ void menu_toggle_submenu();
 int menu_cine_colors_enabled(void);
 int* menu_cine_colors_var(void);
 
+/* Cinema OS standalone menu engine hooks (menu.c internals) */
+struct menu * menu_cinema_get_active_tab(void);
+struct menu * menu_cinema_get_submenu(void);
+int menu_cinema_submenu_level(void);
+int menu_cinema_edit_mode(void);
+int menu_cinema_entry_visible(struct menu_entry * entry);
+void menu_cinema_fill_entry_info(struct menu * menu, struct menu_entry * entry, struct menu_display_info * info);
+void menu_cinema_draw_pickbox(struct menu_entry * entry, int x0, int y0, int accent);
+
 int menu_get_value_from_script(const char* name, const char* entry_name);
 char* menu_get_str_value_from_script(const char* name, const char* entry_name, struct menu_display_info * info);
 int menu_set_value_from_script(const char* name, const char* entry_name, int value);
