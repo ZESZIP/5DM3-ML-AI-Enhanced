@@ -4,10 +4,10 @@ at mlv_lite.c:2748 (compress_task), task compress_task
 lv:1 mode:3
 
 compress_task stack: 1ac530 [1ac5c0-1ab5c0]
-0xUNKNOWN  @ c1b8f4:1ac560
-0x00070EF8 @ b2f98:1ac530
+0xUNKNOWN  @ c1a884:1ac560
+0x00070EF8 @ b45e8:1ac530
 
 Magic Lantern version: CINE.AI.ENHANCED.5D3
-Git commit: ce6bc98 cursor/cine-ai-ui-fix-help-4a83
-Built on 2026-07-02 20:11:40 UTC by ubuntu@cursor.
-Free Memory  : 186K + 1920K
+Git commit: fbde6dd cursor/csp-stream-fix-peaking-4a83
+Built on 2026-07-03 08:36:17 UTC by ubuntu@cursor.
+Free Memory  : 178K + 1837K
