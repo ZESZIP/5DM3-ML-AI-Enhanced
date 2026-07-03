@@ -73,6 +73,7 @@
 #include "shoot.h"
 #include "fileprefix.h"
 #include "../../../src/cinema_governor.h"
+#include "../../../src/cinema_record_boost.h"
 #include "timer.h"
 #include "ml-cbr.h"
 #include "mlv_cinepack.h"
@@ -1911,6 +1912,7 @@ static LVINFO_UPDATE_FUNC(recording_status)
     LVINFO_BUFFER(24);
     
     if ((indicator_display != INDICATOR_IN_LVINFO) || RAW_IS_IDLE) return;
+    if (cinema_record_boost_active() && RAW_IS_RECORDING) return;
     if (!measured_write_speed) return;
 
     prev_color = item->color_bg = update_status(buffer, sizeof(buffer));
@@ -2670,6 +2672,7 @@ static void edmac_start_spy()
 
     edmac_frame_duration = 1e9 / fps;
     if (show_edmac && !edmac_spy_active && !RAW_IS_IDLE
+        && !cinema_record_boost_active()
         && edmac_read_base != 0xffffffff && edmac_wraw_base != 0xffffffff)
     {
         edmac_spy_active = 1;
@@ -3435,6 +3438,7 @@ void raw_video_rec_task()
 
     /* disable Canon's powersaving (30 min in LiveView) */
     powersave_prohibit();
+    cinema_record_boost_enter();
 
     /* wait for two frames to be sure everything is refreshed */
     wait_lv_frames(2);
@@ -3530,6 +3534,15 @@ void raw_video_rec_task()
         if (buffer_full)
         {
             goto abort_and_check_early_stop;
+        }
+
+        cinema_record_boost_tick();
+
+        /* CSP stream: compress_task owns the entire pipeline — park RawRecTask */
+        if (mlv_cinepack_stream_mode())
+        {
+            msleep(50);
+            continue;
         }
         
         if (use_h264_proxy())
@@ -3945,6 +3958,8 @@ cleanup:
     {
         hack_liveview(1);
     }
+
+    cinema_record_boost_exit();
 
     if (preview_mode_for_csp >= 0)
     {
@@ -4601,7 +4616,7 @@ static unsigned int raw_rec_init()
 
     settings_sem = create_named_semaphore(NULL, SEM_CREATE_UNLOCKED);
 
-    ASSERT(((uint32_t)task_create("compress_task", 0x0F, 0x1000, compress_task, (void*)0) & 1) == 0);
+    ASSERT(((uint32_t)task_create("compress_task", 0x08, 0x1000, compress_task, (void*)0) & 1) == 0);
 
     return 0;
 }

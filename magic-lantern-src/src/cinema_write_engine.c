@@ -10,6 +10,7 @@
 #include "fps.h"
 #include "console.h"
 #include "cinema_thermal.h"
+#include "cinema_record_boost.h"
 
 static CONFIG_INT("cinema.write.engine", cinema_write_engine_on, 1);
 static CONFIG_INT("cinema.write.autoprofile", cinema_write_autoprofile, 1);
@@ -83,6 +84,8 @@ void cinema_write_arm_hacks(void)
     set_config_var("raw.preview", 2);
     set_config_var("raw.sync_beep", 1);
     set_config_var("fps.override", 1);
+    set_config_var("cinema.record.boost", 1);
+    set_config_var("idle.never.poweroff", 1);
 }
 
 static void cinema_write_set_profile(
@@ -171,6 +174,8 @@ void cinema_write_engine_tick(void)
     {
         int live = get_config_var("raw.write.speed");
         if (live > 0) write_speed_centi = live;
+        if (!cinema_record_boost_active())
+            cinema_thermal_tick();
         return;
     }
 

@@ -355,7 +355,7 @@ int mlv_cinepack_write_frame(const void * payload, int size, int frame_num)
 
     csp_frames++;
     csp_bytes += (int64_t) sizeof(fh) + size;
-    if ((csp_frames % 8) == 0)
+    if ((csp_frames % 32) == 0)
         FIO_SeekSkipFile(csp_file, 0, SEEK_CUR);
     return 1;
 
