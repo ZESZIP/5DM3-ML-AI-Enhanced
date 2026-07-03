@@ -57,12 +57,12 @@ static int cme_entry_icon(struct menu_entry * entry, struct menu_display_info * 
 
 static void cme_draw_list(struct menu * tab, int list_y)
 {
+    (void) list_y;
     cinema_os_page_t page = cinema_os_active_page();
-    int accent = cinema_os_page_color(page);
+    int accent = cine_ui_theme_color_for_page(page);
     int total = cme_count_visible(tab);
     int visible = CINE_VISIBLE_ROWS;
     int sel_idx = 0;
-    struct menu_entry * sel_entry = 0;
     int idx = 0;
 
     for (struct menu_entry * e = tab->children; e; e = e->next)
@@ -70,48 +70,13 @@ static void cme_draw_list(struct menu * tab, int list_y)
         if (!menu_cinema_entry_visible(e))
             continue;
         if (e->selected)
-        {
             sel_idx = idx;
-            sel_entry = e;
-        }
         idx++;
     }
 
     cme_sync_scroll(tab, sel_idx, visible);
-
-    for (int vr = 0; vr < visible; vr++)
-    {
-        int py = list_y + vr * CINE_ROW_H;
-        struct menu_entry * entry = cme_visible_at(tab, tab->scroll_pos + vr);
-        if (!entry)
-            continue;
-
-        if (menu_cinema_edit_mode() && !entry->selected)
-            continue;
-
-        struct menu_display_info info;
-        menu_cinema_fill_entry_info(tab, entry, &info);
-        if (info.custom_drawing == CUSTOM_DRAW_THIS_MENU)
-            return;
-
-        cinema_gui_draw_menu_row(CINE_LIST_X, py, CINE_LIST_W, CINE_ROW_H,
-            accent, entry->selected, cme_entry_icon(entry, &info), info.name, info.value);
-
-        if (entry->selected && menu_cinema_edit_mode())
-            menu_cinema_draw_pickbox(entry, CINE_LIST_X + 12, py + CINE_ROW_H, accent);
-    }
-
-    cinema_gui_draw_scrollbar(712, list_y, visible * CINE_ROW_H,
-        total, visible, tab->scroll_pos, accent);
-
-    if (sel_entry)
-    {
-        struct menu_display_info info;
-        menu_cinema_fill_entry_info(tab, sel_entry, &info);
-        if (info.help[0])
-            cinema_gui_draw_text_shadow(FONT_SMALL, 16, 480 - CINE_FOOT_H - 22,
-                info.help, COLOR_GRAY(45));
-    }
+    cinema_draw_modern_menu(tab, tab->scroll_pos, sel_idx, accent);
+    (void) total;
 }
 
 static void cme_draw_submenu_overlay(struct menu * submenu)

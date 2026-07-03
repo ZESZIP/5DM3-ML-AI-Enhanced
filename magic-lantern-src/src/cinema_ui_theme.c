@@ -103,6 +103,21 @@ void cine_ui_draw_backdrop(int x, int y, int w, int h, int accent)
     cine_ui_draw_veil_20(x, y, w, h);
 }
 
+#include "cinema_os.h"
+
+int cine_ui_theme_color_for_page(cinema_os_page_t page)
+{
+    switch (page)
+    {
+        case CINE_PAGE_SETTINGS: return THEME_COLOR_SETTINGS;
+        case CINE_PAGE_PHOTO:    return THEME_COLOR_PHOTO;
+        case CINE_PAGE_CINEMATIC:return THEME_COLOR_CINE;
+        case CINE_PAGE_ADDONS:   return THEME_COLOR_ADDONS;
+        case CINE_PAGE_HACKS:    return THEME_COLOR_HACKS;
+        default:                 return THEME_COLOR_CINE;
+    }
+}
+
 void cine_ui_draw_shadow(int x, int y, int w, int h, int depth)
 {
     for (int i = depth; i > 0; i--)
