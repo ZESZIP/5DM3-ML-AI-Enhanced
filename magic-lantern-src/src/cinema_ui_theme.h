@@ -16,4 +16,11 @@ void cine_ui_draw_row_card(int x, int y, int w, int h, int accent, int selected)
 void cine_ui_draw_submenu_frame(int bx, int by, int w, int h, int accent, const char * title);
 int cine_ui_menu_accent(struct menu * menu);
 
+/* 2026 cinema spec — matte nav, flat canvas, emerald highlight, glass panels */
+void cine_ui_draw_matte_nav_bar(int y, int bar_h, int active_page, const int * page_colors, const char ** labels, const int * icons, int page_count);
+void cine_ui_draw_flat_page_bg(int accent, int y0, int h);
+void cine_ui_draw_emerald_highlight(int x, int y, int w, int h);
+void cine_ui_draw_glass_panel(int x, int y, int w, int h);
+void cine_ui_draw_abbr_icon(int x, int y, const char * abbr, int accent);
+
 #endif

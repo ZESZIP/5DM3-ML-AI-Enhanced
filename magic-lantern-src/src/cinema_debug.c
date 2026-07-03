@@ -12,6 +12,7 @@
 #include "menu.h"
 #include "cinema_debug.h"
 #include "cinema_record_apply.h"
+#include "cinema_debug_mode.h"
 
 static CONFIG_INT("cinema.debug.overlay", cine_debug_overlay, 1);
 
@@ -40,6 +41,8 @@ static void debug_push_line(const char * line)
 
 void cine_debug_log(const char * fmt, ...)
 {
+    if (!cinema_debug_mode_enabled()) return;
+
     char line[CINE_DEBUG_LINE_LEN];
     va_list ap;
     va_start(ap, fmt);
@@ -123,7 +126,10 @@ void cine_debug_log_mlv_state(void)
         cinema_record_peaking_on());
 }
 
-int cine_debug_overlay_enabled(void) { return cine_debug_overlay; }
+int cine_debug_overlay_enabled(void)
+{
+    return cinema_debug_mode_enabled() && cine_debug_overlay;
+}
 int* cine_debug_overlay_var(void) { return &cine_debug_overlay; }
 
 void cine_debug_draw_overlay(void)

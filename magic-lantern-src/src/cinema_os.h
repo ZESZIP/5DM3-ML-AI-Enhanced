@@ -29,6 +29,8 @@
 #define CINE_ICON_LV          ICON_ML_DISPLAY
 #define CINE_ICON_FOCUS       ICON_ML_FOCUS
 
+#define CINE_EMERALD_HI       COLOR_GREEN1
+
 #define CINE_NAV_H           56
 #define CINE_SUBHEADER_H     40
 #define CINE_ROW_H           56
