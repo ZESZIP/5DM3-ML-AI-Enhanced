@@ -66,9 +66,6 @@ enum {
     CINE_ROW_COUNT = 12
 };
 
-#define CINE_COLS            2
-#define CINE_COL_W           348
-#define CINE_COL_GAP         16
 
 static const int row_icons[CINE_ROW_COUNT] = {
     CINE_ICON_RES, CINE_ICON_LV, CINE_ICON_SHUTTER, CINE_ICON_FPS, CINE_ICON_CODEC, CINE_ICON_GAMMA,
@@ -76,16 +73,12 @@ static const int row_icons[CINE_ROW_COUNT] = {
 };
 
 static const char * row_titles[CINE_ROW_COUNT] = {
-    "RESOLUTION", "LV PREVIEW %", "BIT DEPTH", "FRAME RATE", "CODEC/FORMAT", "GAMMA CURVE",
-    "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "FOCUS PEAKING", "AUDIO MONITOR"
+    "Resolution", "LV PREVIEW %", "BIT DEPTH", "FRAME RATE", "CODEC", "GAMMA",
+    "SHUTTER", "APERTURE", "ISO / GAIN", "WHITE BALANCE", "FOCUS PEAKING", "AUDIO"
 };
 
 static const int lv_dial_steps[] = { 25, 50, 75, 100 };
 
-static const char * row_abbr[CINE_ROW_COUNT] = {
-    "Res", "LV", "Bit", "FPS", "Fmt", "Gam",
-    "Shut", "Apt", "ISO", "WB", "Pk", "Aud"
-};
 static const int cine_panel_map[CINE_ROW_COUNT] = {
     0, -1, -1, 1, 2, 3, 4, 5, 6, 7, -1, 8
 };
@@ -138,7 +131,7 @@ int cinema_os_page_menu_icon(cinema_os_page_t page)
     return page_menu_icons[page];
 }
 
-int cinema_os_tab_bar_height(void) { return CINE_NAV_H; }
+int cinema_os_tab_bar_height(void) { return CINE_HDR_H + CINE_NAV_H; }
 int cinema_os_entry_row_height(void) { return CINE_ROW_H; }
 
 int cinema_os_uses_cinematic_canvas(void)
@@ -164,60 +157,7 @@ void cinema_os_on_menu_open(void)
 void cinema_os_draw_status_footer(void)
 {
     if (!cinema_os_skin_active()) return;
-
-    int foot_y = 432;
-    int page_c = cinema_os_page_color(cinema_os_active_page());
-    cine_ui_draw_hd_panel(0, foot_y, 720, 48, page_c);
-    bmp_printf(FONT(FONT_MED, COLOR_WHITE, page_c), 16, foot_y + 6, "CINE AI ENHANCED");
-
-    if (cinema_panel_is_open())
-        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-            "L/R option   SET apply   MENU back");
-    else if (cinema_os_uses_cinematic_canvas())
-    {
-        if (cine_row_sel == CINE_ROW_LV && !cinema_panel_is_open())
-            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-                "L/R LV dial   Up/Dn row   SET panel");
-        else if ((cine_row_sel == CINE_ROW_DEPTH || cine_row_sel == CINE_ROW_PEAK)
-            && !cinema_panel_is_open())
-            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-                "L/R adjust   Up/Dn row   SET apply");
-        else
-            bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-                "L/R pages   Up/Dn row   SET panel");
-    }
-    else
-        bmp_printf(FONT(FONT_SMALL, page_c, COLOR_BLACK), 16, foot_y + 26,
-            "L/R pages   Up/Dn select   SET enter");
-
-    if (cinema_os_uses_cinematic_canvas())
-    {
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 4,
-            "%s", cinema_write_speed_label());
-        bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), 200, foot_y + 24,
-            "%s", cinema_write_profile_label());
-
-        if (cinema_record_mlv_armed())
-        {
-            if (cinema_record_format_is_cinepack())
-                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 500, foot_y + 4, "CSP ARMED");
-            else
-                bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK), 520, foot_y + 4, "RAW ARMED");
-        }
-        else
-            bmp_printf(FONT(FONT_MED, COLOR_LIGHT_BLUE, COLOR_BLACK), 520, foot_y + 4, "MOV MODE");
-
-        if (cinema_governor_fallback_active())
-            bmp_printf(FONT(FONT_SMALL, COLOR_ORANGE, COLOR_BLACK), 640, foot_y + 4, "GOV");
-        else if (cinema_write_engine_ready())
-            bmp_printf(FONT(FONT_MED, COLOR_GREEN1, COLOR_BLACK), 640, foot_y + 10, "READY");
-
-        if (cinema_thermal_warn_active())
-        {
-            int tc = cinema_thermal_celsius();
-            bmp_printf(FONT(FONT_SMALL, COLOR_RED, COLOR_BLACK), 560, foot_y + 26, "%dC", tc);
-        }
-    }
+    cinema_gui_draw_status_footer();
 }
 
 /* ---- value formatters for CINEMATIC rows ---- */
@@ -426,21 +366,14 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 
 void cinema_os_draw_nav_bar(int y)
 {
-    cinema_gui_draw_nav_bar(y, CINE_NAV_H, (int) cinema_os_active_page(),
+    cinema_gui_draw_nav_bar(y + CINE_HDR_H, CINE_NAV_H, (int) cinema_os_active_page(),
         page_colors, page_labels, page_icons, CINE_PAGE_COUNT);
 }
 
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
 {
-    int c = cinema_os_page_color(page);
     cinema_gui_draw_page_bg(page, 0, y0, 720, h);
-
-    if (page == CINE_PAGE_CINEMATIC)
-        cinema_gui_draw_text_shadow(FONT_LARGE, 28, y0 + 18,
-            "CINE MODE | RECORD SENSING / SETTINGS", COLOR_WHITE);
-    else
-        cinema_gui_draw_text_shadow(FONT_MED, 28, y0 + 18, page_labels[page], COLOR_WHITE);
-    (void) c;
+    (void) page;
 }
 
 /* ---- CINEMATIC scrollable list ---- */
@@ -449,74 +382,36 @@ int cinema_os_draw_cinematic_page(int list_y)
 {
     cinema_os_page_t page = CINE_PAGE_CINEMATIC;
     int accent = cinema_os_page_color(page);
-    int y0 = CINE_NAV_H + CINE_SUBHEADER_H;
-    int body_h = 480 - y0 - 50;
-    int visible_rows = CINE_VISIBLE_ROWS;
+    int visible = CINE_VISIBLE_ROWS;
+    int list_h = visible * CINE_ROW_H;
 
-    cinema_os_draw_page_background(page, CINE_NAV_H, body_h + CINE_SUBHEADER_H);
+    if (cine_row_sel < cine_row_scroll)
+        cine_row_scroll = cine_row_sel;
+    if (cine_row_sel >= cine_row_scroll + visible)
+        cine_row_scroll = cine_row_sel - visible + 1;
 
-    int row_y0 = list_y;
-    int first_row = cine_row_scroll / CINE_COLS;
-
-    if (cine_row_sel / CINE_COLS < first_row)
-        cine_row_scroll = (cine_row_sel / CINE_COLS) * CINE_COLS;
-    if (cine_row_sel / CINE_COLS >= first_row + visible_rows)
-        cine_row_scroll = ((cine_row_sel / CINE_COLS) - visible_rows + 1) * CINE_COLS;
-
-    first_row = cine_row_scroll / CINE_COLS;
-
-    for (int vr = 0; vr < visible_rows; vr++)
+    for (int vr = 0; vr < visible; vr++)
     {
-        int py = row_y0 + vr * CINE_ROW_H;
+        int row = cine_row_scroll + vr;
+        if (row >= CINE_ROW_COUNT) break;
 
-        for (int col = 0; col < CINE_COLS; col++)
-        {
-            int row = (first_row + vr) * CINE_COLS + col;
-            if (row >= CINE_ROW_COUNT) continue;
+        int py = list_y + vr * CINE_ROW_H;
+        int sel = (row == cine_row_sel);
+        char val[64];
+        cine_row_value(row, val, sizeof(val));
 
-            int sel = (row == cine_row_sel);
-            int scale = sel ? 115 : 100;
-            int row_h = CINE_ROW_H * scale / 100;
-            int rx = 10 + col * (CINE_COL_W + CINE_COL_GAP);
-            int ry = sel ? py - 4 : py;
-            int rw = CINE_COL_W;
-
-            if (sel)
-                cinema_gui_draw_crystal_row(rx, ry, rw, row_h, accent, scale);
-            else
-                bmp_fill(accent, rx, py, rw, CINE_ROW_H - 4);
-
-            int icon_y = sel ? ry + 10 : py + 6;
-            int text_x = rx + (sel ? 64 : 56);
-            int row_bg = sel ? COLOR_BLACK : accent;
-
-            cine_ui_draw_abbr_icon(rx + (sel ? 12 : 8), icon_y, row_abbr[row], accent);
-
-            char val[64];
-            cine_row_value(row, val, sizeof(val));
-
-            cinema_gui_draw_text_shadow(sel ? FONT_CANON : FONT_LARGE, text_x, ry + (sel ? 6 : 8),
-                row_titles[row], COLOR_WHITE);
-            cinema_gui_draw_text_shadow(FONT_MED, text_x, ry + (sel ? 28 : 30),
-                val, sel ? accent : COLOR_WHITE);
-
-            if (!cine_row_is_dial(row))
-                bmp_printf(FONT(FONT_MED, COLOR_WHITE, NO_BG_ERASE),
-                    rx + rw - 24, ry + (sel ? 18 : 14), ">");
-
-            if (sel && row == CINE_ROW_RES && !cinema_panel_is_open())
-                cine_draw_glass_resolution_dropdown(rx, ry + row_h + 4, accent);
-
-            (void) row_bg;
-        }
+        cinema_gui_draw_menu_row(CINE_LIST_X, py, CINE_LIST_W, CINE_ROW_H,
+            accent, sel, row_icons[row], row_titles[row], val);
     }
 
-    cine_ui_draw_scrollbar(708, row_y0, visible_rows * CINE_ROW_H,
-        (CINE_ROW_COUNT + CINE_COLS - 1) / CINE_COLS, visible_rows,
-        first_row, COLOR_WHITE);
+    cinema_gui_draw_scrollbar(712, list_y, list_h, CINE_ROW_COUNT, visible,
+        cine_row_scroll, accent);
 
     if (cinema_panel_is_open())
-        cinema_panel_draw(row_y0, body_h);
+    {
+        int body_h = 480 - cinema_gui_list_top_y() - CINE_FOOT_H;
+        cinema_panel_draw(list_y, body_h);
+    }
 
     return 1;
 }
@@ -572,12 +467,12 @@ int cinema_os_handle_key(unsigned int key)
     {
         case BGMT_WHEEL_UP:
         case BGMT_PRESS_UP:
-            cine_row_sel = MOD(cine_row_sel - CINE_COLS, CINE_ROW_COUNT);
+            cine_row_sel = MOD(cine_row_sel - 1, CINE_ROW_COUNT);
             return 1;
 
         case BGMT_WHEEL_DOWN:
         case BGMT_PRESS_DOWN:
-            cine_row_sel = MOD(cine_row_sel + CINE_COLS, CINE_ROW_COUNT);
+            cine_row_sel = MOD(cine_row_sel + 1, CINE_ROW_COUNT);
             return 1;
 
         case BGMT_PRESS_SET:
