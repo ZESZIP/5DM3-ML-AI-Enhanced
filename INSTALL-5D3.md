@@ -33,7 +33,7 @@ Press Delete → **Help** tab. Version must contain **`CINE.AI.ENHANCED`** or **
 
 | Method | What to get |
 |--------|-------------|
-| **Easiest** | Download `5DM3-AI-Cinema-INSTALL.zip` from repo root |
+| **Easiest** | Download `5DM3-AI-Cinema-INSTALL.zip` from repo root (rebuilt with each release; includes `ML/CINE_UI/`, record boost, CSP stream) |
 | Git | `git clone` then use files at repo root |
 | Build | `cd magic-lantern-src/platform/5D3.123 && make VERSION="CINEMA.OS.2026.5D3" -j4` |
 
@@ -44,7 +44,7 @@ Five operational pages on a black nav bar (wheel left/right to switch):
 | Tab | Color | Purpose |
 |-----|-------|---------|
 | SETTINGS | Yellow | Prefs |
-| PHOTO | Green | Shoot |
+| PHOTO | Green | **Classic ML Shoot menu** (standard tab bar, no Cinema chrome) |
 | **CINE** | **Orange** | Recording sensing / settings list |
 | ADD-ONS | Blue | Modules |
 | HACKS | Purple | Debug |
