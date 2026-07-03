@@ -2,6 +2,16 @@
 #define _cinema_ui_theme_h_
 
 #include "menu.h"
+#include "cinema_os.h"
+
+/* 5D Mark III Modern OS palette */
+#define THEME_COLOR_CINE     COLOR_ORANGE      /* #FF6600 */
+#define THEME_COLOR_PHOTO    COLOR_GREEN1      /* #4CD964 */
+#define THEME_COLOR_SETTINGS COLOR_YELLOW      /* #FFCC00 */
+#define THEME_COLOR_ADDONS   COLOR_LIGHT_BLUE  /* #00A2FF */
+#define THEME_COLOR_HACKS    COLOR_MAGENTA     /* #A55EEA */
+
+int cine_ui_theme_color_for_page(cinema_os_page_t page);
 
 void cine_ui_draw_shadow(int x, int y, int w, int h, int depth);
 void cine_ui_draw_backdrop(int x, int y, int w, int h, int accent);
