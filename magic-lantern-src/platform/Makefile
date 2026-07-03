@@ -220,7 +220,6 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/zip/ML/scripts/lib
 endif
 
-# copy in files that are never rebuilt
 $(ZIP_DIR): | $(BUILD_DIR)
 	$(CP) $(TOP_DIR)/data/cropmks/*.bmp $(BUILD_DIR)/zip/ML/cropmks
 	$(CP) $(TOP_DIR)/data/cine_ui/*.bmp $(BUILD_DIR)/zip/ML/CINE_UI

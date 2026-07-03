@@ -31,10 +31,13 @@
 
 #define CINE_EMERALD_HI       COLOR_GREEN1
 
-#define CINE_NAV_H           56
-#define CINE_SUBHEADER_H     40
-#define CINE_ROW_H           56
-#define CINE_VISIBLE_ROWS    6
+#define CINE_HDR_H             32
+#define CINE_NAV_H             44
+#define CINE_FOOT_H            28
+#define CINE_ROW_H             44
+#define CINE_VISIBLE_ROWS      7
+#define CINE_LIST_X            10
+#define CINE_LIST_W            700
 
 typedef enum {
     CINE_PAGE_SETTINGS = 0,
