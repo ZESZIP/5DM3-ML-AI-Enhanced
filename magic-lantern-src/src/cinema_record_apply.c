@@ -14,6 +14,7 @@
 #include "cinema_write_engine.h"
 #include "cinema_module_bridge.h"
 #include "cine_codec.h"
+#include "cinema_governor.h"
 #include "cinema_debug.h"
 
 static CONFIG_INT("cine.rec.res", cine_res, 1);
@@ -25,6 +26,8 @@ static CONFIG_INT("cine.sensor.pct", cine_sensor_pct, 100);
 static CONFIG_INT("cine.lv.pct", cine_lv_pct, 50);
 static CONFIG_INT("cine.rec.bpp", cine_bpp_idx, 0);
 static CONFIG_INT("cine.rec.peaking", cine_peaking_on, 1);
+
+static CONFIG_INT("cine.lv.rec_fps", cine_lv_rec_fps, 12);
 
 static const char * res_labels[]   = { "720p", "1080p", "2.7K", "4K UHD", "6K" };
 static const int    res_target_w[] = { 1280, 1920, 2704, 3840, 5760 };
@@ -116,6 +119,27 @@ void cinema_record_set_lv_pct(int pct)
     cine_codec_set_lv_pct(cine_lv_pct);
 }
 
+void cinema_record_set_lv_rec_fps(int fps)
+{
+    cine_lv_rec_fps = (fps == 12) ? 12 : 0;
+    set_config_var("cine.lv.rec_fps", cine_lv_rec_fps);
+}
+
+int cinema_record_lv_rec_fps(void)
+{
+    return cine_lv_rec_fps;
+}
+
+const char * cinema_record_lv_label(void)
+{
+    static char buf[32];
+    if (cine_lv_rec_fps == 12)
+        snprintf(buf, sizeof(buf), "%d%% | 12fps gray", cinema_record_lv_pct());
+    else
+        snprintf(buf, sizeof(buf), "%d%%", cinema_record_lv_pct());
+    return buf;
+}
+
 int cinema_record_lv_pct(void)
 {
     return COERCE(cine_lv_pct, 25, 100);
@@ -174,6 +198,21 @@ const char * cinema_record_format_label(void)
 {
     int i = COERCE(cine_fmt_idx, 0, COUNT(fmt_labels) - 1);
     return fmt_labels[i];
+}
+
+const char * cinema_record_codec_display_label(void)
+{
+    if (cinema_governor_fallback_active())
+        return cinema_governor_format_label();
+    if (cinema_record_format_is_cinepack())
+    {
+        static char buf[48];
+        snprintf(buf, sizeof(buf), "CSP %s", cinema_record_bpp_label());
+        return buf;
+    }
+    static char buf[32];
+    snprintf(buf, sizeof(buf), "%s MLV RAW", cinema_record_bpp_label());
+    return buf;
 }
 
 const char * cinema_record_resolution_label(void)
@@ -265,6 +304,7 @@ int cinema_record_apply_full(void)
     }
 
     cinema_record_apply_peaking();
+    set_config_var("cine.lv.rec_fps", cine_lv_rec_fps);
 
     gui_uilock(UILOCK_EVERYTHING);
 

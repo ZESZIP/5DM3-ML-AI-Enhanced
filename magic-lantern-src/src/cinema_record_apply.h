@@ -16,6 +16,9 @@ void cinema_record_set_format_idx(int fmt_idx);
 void cinema_record_set_sensor_pct(int pct);
 void cinema_record_set_lv_pct(int pct);
 int cinema_record_lv_pct(void);
+void cinema_record_set_lv_rec_fps(int fps);
+int cinema_record_lv_rec_fps(void);
+const char * cinema_record_lv_label(void);
 void cinema_record_set_bpp_idx(int idx);
 int cinema_record_bpp_idx(void);
 const char * cinema_record_bpp_label(void);
@@ -27,6 +30,7 @@ int cinema_record_apply_full(void);
 int cinema_record_mlv_armed(void);
 const char * cinema_record_container_label(void);
 const char * cinema_record_format_label(void);
+const char * cinema_record_codec_display_label(void);
 const char * cinema_record_resolution_label(void);
 const char * cinema_record_fps_label(void);
 

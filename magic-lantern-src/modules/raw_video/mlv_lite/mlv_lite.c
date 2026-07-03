@@ -2834,6 +2834,25 @@ static void compress_task()
     }
 }
 
+static int buffer_cleanse_count = 0;
+
+static void buffer_cleanse_oldest(void)
+{
+    if (mlv_cinepack_stream_mode()) return;
+    int w_head = writing_queue_head;
+    int w_tail = writing_queue_tail;
+    if (w_head == w_tail) return;
+
+    buffer_cleanse_count++;
+    if ((buffer_cleanse_count % 2) != 0) return;
+
+    int slot_index = writing_queue[w_head];
+    if (slots[slot_index].status == SLOT_FULL || slots[slot_index].status == SLOT_CAPTURING)
+        slots[slot_index].status = SLOT_FREE;
+    INC_MOD(writing_queue_head, COUNT(writing_queue));
+    cinema_governor_buffer_cleanse(buffer_cleanse_count);
+}
+
 static REQUIRES(LiveViewTask) FAST
 void process_frame(int next_fullsize_buffer_pos)
 {
@@ -2888,6 +2907,12 @@ void process_frame(int next_fullsize_buffer_pos)
 
     if (capture_slot >= 0)
     {
+        int w_tail = writing_queue_tail;
+        int w_head = writing_queue_head;
+        if (!mlv_cinepack_stream_mode()
+            && MOD(w_tail - w_head, COUNT(writing_queue)) > 2)
+            buffer_cleanse_oldest();
+
         /* okay */
         slots[capture_slot].frame_number = frame_count;
         slots[capture_slot].status = SLOT_CAPTURING;
@@ -4292,6 +4317,10 @@ static int preview_dirty = 0;
 
 static int preview_lv_quality(void)
 {
+    int lv_fps = get_config_var("cine.lv.rec_fps");
+    if (lv_fps == 12 && RAW_IS_RECORDING)
+        return RAW_PREVIEW_GRAY_ULTRA_FAST;
+
     int pct = preview_lv_scale_values[preview_lv_scale_index];
     if (pct <= 50)
         return RAW_PREVIEW_GRAY_ULTRA_FAST;
@@ -4300,6 +4329,10 @@ static int preview_lv_quality(void)
 
 static int preview_lv_sleep_ms(int need_for_speed, int queued_frames)
 {
+    int lv_fps = get_config_var("cine.lv.rec_fps");
+    if (lv_fps == 12 && RAW_IS_RECORDING)
+        return 83;
+
     if (need_for_speed)
     {
         return (queued_frames > valid_slot_count / 2) ? 1000 : 500;
@@ -4578,6 +4611,12 @@ unsigned int mlv_lite_cine_arm(
 
     refresh_raw_settings(1);
     return raw_video_enabled ? 1 : 0;
+}
+
+unsigned int mlv_lite_cine_adjust_target(unsigned int centi_mbs)
+{
+    mlv_cinepack_set_target_centimbs((int) centi_mbs);
+    return 1;
 }
 
 unsigned int mlv_lite_cine_status(unsigned int * res_out, unsigned int * fmt_out)

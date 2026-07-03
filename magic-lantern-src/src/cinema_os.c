@@ -29,7 +29,7 @@ static int cine_row_sel = 0;
 static int cine_row_scroll = 0;
 
 static const char * page_labels[CINE_PAGE_COUNT] = {
-    "SETTINGS", "PHOTO", "CINE", "ADD-ONS", "HACKS"
+    "SETTINGS", "PHOTO", "CINEMATIC", "ADD-ONS", "HACKS"
 };
 
 static const int page_icons[CINE_PAGE_COUNT] = {
@@ -77,7 +77,10 @@ static const char * row_titles[CINE_ROW_COUNT] = {
 
 static const int lv_dial_steps[] = { 25, 50, 75, 100 };
 
-/* panel row for cinematic row, or -1 for dial-only rows */
+static const char * row_abbr[CINE_ROW_COUNT] = {
+    "Res", "LV", "Bit", "FPS", "Fmt", "Gam",
+    "Shut", "Apt", "ISO", "WB", "Pk", "Aud"
+};
 static const int cine_panel_map[CINE_ROW_COUNT] = {
     0, -1, -1, 1, 2, 3, 4, 5, 6, 7, -1, 8
 };
@@ -255,7 +258,7 @@ static void cine_fmt_audio(char * buf, int len)
 
 static void cine_fmt_lv(char * buf, int len)
 {
-    snprintf(buf, len, "%d%%", cinema_record_lv_pct());
+    snprintf(buf, len, "%s", cinema_record_lv_label());
 }
 
 static void cine_fmt_depth(char * buf, int len)
@@ -277,7 +280,7 @@ static void cine_row_value(int row, char * buf, int len)
         case CINE_ROW_DEPTH:   cine_fmt_depth(buf, len); break;
         case CINE_ROW_FPS:     cine_fmt_fps(buf, len); break;
         case CINE_ROW_FORMAT:
-            snprintf(buf, len, "%s", cinema_record_format_label());
+            snprintf(buf, len, "%s", cinema_record_codec_display_label());
             break;
         case CINE_ROW_GAMMA:   cine_fmt_gamma(buf, len); break;
         case CINE_ROW_SHUTTER: cine_fmt_shutter(buf, len); break;
@@ -308,6 +311,12 @@ static void cine_draw_lv_dial(int x, int y, int pct, int accent, int sel)
 
 static void cine_lv_step(int delta)
 {
+    if (ABS(delta) > 1)
+    {
+        cinema_record_set_lv_rec_fps(cinema_record_lv_rec_fps() == 12 ? 0 : 12);
+        beep();
+        return;
+    }
     int cur = cinema_record_lv_pct();
     int best = 0;
     int best_d = 1000;
@@ -343,6 +352,32 @@ static int cine_row_is_dial(int row)
     return row == CINE_ROW_LV || row == CINE_ROW_DEPTH || row == CINE_ROW_PEAK;
 }
 
+static void cine_draw_glass_resolution_dropdown(int x, int y, int bg)
+{
+    static const char * opts[] = {
+        "720p", "1080p", "2.7K", "4K UHD", "6K", "BEAST 4K25", "BEAST 1080p120"
+    };
+    int cols = 3;
+    int cell_w = 210;
+    int cell_h = 36;
+    int panel_w = cols * cell_w + 24;
+    int rows = (COUNT(opts) + cols - 1) / cols;
+    int panel_h = rows * cell_h + 20;
+
+    cine_ui_draw_glass_panel(x, y, panel_w, panel_h);
+    bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_GRAY(50)), x + 12, y + 6, "RESOLUTION");
+
+    for (int i = 0; i < COUNT(opts); i++)
+    {
+        int col = i % cols;
+        int row = i / cols;
+        int cx = x + 12 + col * cell_w;
+        int cy = y + 22 + row * cell_h;
+        bmp_printf(FONT(FONT_MED, COLOR_WHITE, COLOR_GRAY(45)), cx, cy, "%s", opts[i]);
+    }
+    (void) bg;
+}
+
 /* ---- drawing primitives ---- */
 
 static void cine_draw_box_icon(int x, int y, int icon, int accent)
@@ -375,40 +410,20 @@ static void cine_draw_scrollbar(int y0, int h, int total, int visible, int scrol
 void cinema_os_draw_nav_bar(int y)
 {
     int bar_h = CINE_NAV_H;
-    int active_c = cinema_os_page_color(cinema_os_active_page());
-
-    cine_ui_draw_backdrop(0, y, 720, bar_h, active_c);
-
-    int tile_w = 720 / CINE_PAGE_COUNT;
-    cinema_os_page_t active = cinema_os_active_page();
-
-    for (int i = 0; i < CINE_PAGE_COUNT; i++)
-    {
-        int x = i * tile_w;
-        int color = page_colors[i];
-        int sel = (i == (int) active);
-        cine_ui_draw_hd_nav_tab(x, y, tile_w, bar_h, color, sel, page_labels[i], page_icons[i]);
-    }
-
-    bmp_fill(active_c, 0, y + bar_h - 3, 720, 3);
+    cine_ui_draw_matte_nav_bar(y, bar_h, (int) cinema_os_active_page(),
+        page_colors, page_labels, page_icons, CINE_PAGE_COUNT);
 }
 
 void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h)
 {
     int c = cinema_os_page_color(page);
+    cine_ui_draw_flat_page_bg(c, y0, h);
 
     if (page == CINE_PAGE_CINEMATIC)
-    {
-        cine_ui_draw_hd_page_bg(c, y0, h);
         bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, c),
-            28, y0 + 22,
-            "CINE MODE | RECORD SENSING / SETTINGS");
-    }
+            28, y0 + 18, "CINEMATIC MODE | RECORD SENSING / SETTINGS");
     else
-    {
-        cine_ui_draw_hd_page_bg(c, y0, h);
-        bmp_printf(FONT(FONT_MED, COLOR_WHITE, c), 28, y0 + 22, "%s", page_labels[page]);
-    }
+        bmp_printf(FONT(FONT_MED, COLOR_WHITE, c), 28, y0 + 18, "%s", page_labels[page]);
 }
 
 /* ---- CINEMATIC scrollable list ---- */
@@ -437,46 +452,38 @@ int cinema_os_draw_cinematic_page(int list_y)
 
         int y = row_y0 + v * CINE_ROW_H;
         int sel = (row == cine_row_sel);
+        int row_h = sel ? (CINE_ROW_H * 115 / 100) : CINE_ROW_H;
+        int row_x = sel ? 4 : 10;
+        int row_w = sel ? 704 : 700;
 
-        cine_ui_draw_row_card(10, y - 4, 700, CINE_ROW_H - 2, bg, sel);
+        if (sel)
+            cine_ui_draw_emerald_highlight(row_x, y - 6, row_w, row_h);
+        else
+            bmp_fill(bg, row_x, y - 2, row_w, CINE_ROW_H - 2);
 
         int fg = COLOR_WHITE;
         int row_bg = sel ? COLOR_BLACK : bg;
+        int icon_y = sel ? y + 10 : y + 6;
+        int text_x = sel ? 88 : 80;
 
-        cine_draw_box_icon(20, y + 6, row_icons[row], bg);
+        cine_ui_draw_abbr_icon(sel ? 24 : 20, icon_y, row_abbr[row], bg);
 
         char val[64];
         cine_row_value(row, val, sizeof(val));
 
-        bmp_printf(FONT(FONT_LARGE, fg, row_bg), 80, y + 10, "%s", row_titles[row]);
-        if (row == CINE_ROW_LV)
-        {
-            int pct = cinema_record_lv_pct();
-            cine_draw_lv_dial(520, y + 20, pct, bg, sel);
-            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R dial — preview scale");
-        }
-        else if (row == CINE_ROW_DEPTH)
-        {
-            bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
-                520, y + 20, "%s", val);
-            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R — source depth for CSP");
-        }
-        else if (row == CINE_ROW_PEAK)
-        {
-            int pk = cinema_record_peaking_on();
-            bmp_printf(FONT(FONT_MED, pk ? COLOR_GREEN1 : COLOR_GRAY(45), row_bg),
-                520, y + 20, "%s", pk ? "ON" : "OFF");
-            bmp_printf(FONT(FONT_SMALL, fg, row_bg), 80, y + 32, "L/R toggle ML focus peaking");
-        }
-        else
-            bmp_printf(FONT(FONT_MED, sel ? bg : COLOR_WHITE, row_bg),
-                80, y + 32, "%s", val);
+        bmp_printf(FONT(sel ? FONT_CANON : FONT_LARGE, fg, row_bg),
+            text_x, y + (sel ? 8 : 10), "%s", row_titles[row]);
+        bmp_printf(FONT(FONT_MED, sel ? CINE_EMERALD_HI : COLOR_WHITE, row_bg),
+            text_x, y + (sel ? 30 : 32), "| %s", val);
 
         if (!cine_row_is_dial(row))
-            cine_draw_chevron(686, y + 16);
+            cine_draw_chevron(686, y + (sel ? 20 : 16));
+
+        if (sel && row == CINE_ROW_RES && !cinema_panel_is_open())
+            cine_draw_glass_resolution_dropdown(40, y + row_h + 4, bg);
     }
 
-    cine_draw_scrollbar(row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll, bg);
+    cine_ui_draw_scrollbar(708, row_y0, visible * CINE_ROW_H, CINE_ROW_COUNT, visible, cine_row_scroll, COLOR_WHITE);
 
     if (cinema_panel_is_open())
         cinema_panel_draw(row_y0, body_h);
@@ -504,7 +511,8 @@ int cinema_os_handle_lr_key(int delta)
     switch (cine_row_sel)
     {
         case CINE_ROW_LV:
-            cine_lv_step(delta);
+            if (delta > 0 || delta < 0)
+                cine_lv_step(delta);
             return 1;
         case CINE_ROW_DEPTH:
             cine_depth_step(delta);
@@ -596,19 +604,12 @@ void cinema_os_get_entry_colors(
     int warn = info && info->warning_level == MENU_WARN_NOT_WORKING;
 
     *accent = tab_c;
+    *fg = COLOR_WHITE;
+    *bg = tab_c;
 
-    if (page == CINE_PAGE_CINEMATIC || (tab && tab->icon == ICON_ML_MOVIE))
-    {
-        if (sel) { *bg = COLOR_WHITE; *fg = CINE_COLOR_CINEMA; }
-        else if (warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
-        else { *bg = CINE_COLOR_CINEMA; *fg = COLOR_WHITE; }
-    }
-    else
-    {
-        if (sel) { *bg = tab_c; *fg = COLOR_WHITE; }
-        else if (warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
-        else { *bg = COLOR_BLACK; *fg = tab_c; }
-    }
+    if (sel && warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
+    else if (warn) { *bg = COLOR_ORANGE; *fg = COLOR_BLACK; }
 
     (void) selected_row;
+    (void) tab;
 }

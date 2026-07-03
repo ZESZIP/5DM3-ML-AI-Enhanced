@@ -229,6 +229,15 @@ static int compress_pass(
     return out_pos;
 }
 
+void mlv_cinepack_set_target_centimbs(int centi_mbs)
+{
+    if (centi_mbs < 3000) centi_mbs = 3000;
+    target_centi_mbs = centi_mbs;
+    int fps = (target_centi_mbs == MLV_TARGET_1080P120_CENTIMBS) ? 120000 : 25000;
+    max_frame_bytes = bytes_per_frame_budget(target_centi_mbs, fps);
+    printf("[CSP] target adjusted %d cMB/s budget=%d\n", centi_mbs, max_frame_bytes);
+}
+
 int mlv_cinepack_compress(
     void * dst, int dst_max,
     const void * src, int src_bytes,

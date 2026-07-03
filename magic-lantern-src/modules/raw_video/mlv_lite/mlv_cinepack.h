@@ -25,7 +25,7 @@ int mlv_cinepack_write_frame(const void * payload, int size, int frame_num);
 void mlv_cinepack_end_file(void);
 int mlv_cinepack_frame_count(void);
 
-int mlv_cinepack_compress(
+void mlv_cinepack_set_target_centimbs(int centi_mbs);
     void * dst, int dst_max,
     const void * src, int src_bytes,
     int width, int height, int quality_pct);

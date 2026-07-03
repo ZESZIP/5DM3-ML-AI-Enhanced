@@ -207,3 +207,65 @@ int cine_ui_menu_accent(struct menu * menu)
         default:               return CINE_COLOR_CINEMA;
     }
 }
+
+#define CINE_EMERALD_HI   COLOR_GREEN1
+#define CINE_EMERALD_MID  COLOR_DARK_GREEN1_MOD
+#define CINE_EMERALD_LO   COLOR_DARK_GREEN2_MOD
+
+void cine_ui_draw_matte_nav_bar(
+    int y, int bar_h, int active_page,
+    const int * page_colors, const char ** labels, const int * icons, int page_count)
+{
+    bmp_fill(COLOR_BLACK, 0, y, 720, bar_h);
+    int tile_w = 720 / page_count;
+
+    for (int i = 0; i < page_count; i++)
+    {
+        int x = i * tile_w;
+        int c = page_colors[i];
+        int sel = (i == active_page);
+        int fg = sel ? c : COLOR_GRAY(40);
+        int icon_fg = sel ? COLOR_WHITE : COLOR_GRAY(35);
+
+        bfnt_draw_char(icons[i], x + 10, y + 10, icon_fg, COLOR_BLACK);
+        bmp_printf(FONT(sel ? FONT_MED : FONT_SMALL, fg, COLOR_BLACK),
+            x + 36, y + (sel ? 14 : 16), "%s", labels[i]);
+
+        if (sel)
+            bmp_fill(c, x + 4, y + bar_h - 5, tile_w - 8, 4);
+    }
+}
+
+void cine_ui_draw_flat_page_bg(int accent, int y0, int h)
+{
+    bmp_fill(accent, 0, y0, 720, h);
+}
+
+void cine_ui_draw_emerald_highlight(int x, int y, int w, int h)
+{
+    cine_ui_draw_shadow(x - 2, y - 4, w + 4, h + 8, 5);
+    cine_ui_fill_chamfer_block(x - 2, y - 4, w + 4, h + 8, CINE_EMERALD_MID, CINE_EMERALD_HI, 8);
+    cine_ui_fill_chamfer_block(x + 4, y + 2, w - 8, h - 4, CINE_EMERALD_LO, CINE_EMERALD_MID, 6);
+    bmp_fill(COLOR_BLACK, x + 10, y + 6, w - 20, h - 12);
+    bmp_draw_rect_chamfer(CINE_EMERALD_HI, x - 2, y - 4, w + 4, h + 8, 8, 0);
+    bmp_fill(CINE_EMERALD_HI, x, y - 4, w, 3);
+}
+
+void cine_ui_draw_glass_panel(int x, int y, int w, int h)
+{
+    cine_ui_draw_shadow(x, y, w, h, 4);
+    for (int yy = y; yy < y + h; yy += 2)
+        bmp_fill(COLOR_GRAY(50), x, yy, w, 1);
+    bmp_fill(COLOR_WHITE, x, y, w, 2);
+    bmp_fill(COLOR_WHITE, x, y, 2, h);
+    bmp_draw_rect(COLOR_WHITE, x, y, w, h);
+    bmp_draw_rect(COLOR_GRAY(60), x + 2, y + 2, w - 4, h - 4);
+}
+
+void cine_ui_draw_abbr_icon(int x, int y, const char * abbr, int accent)
+{
+    bmp_draw_rect(COLOR_WHITE, x, y, 44, 36);
+    bmp_fill(COLOR_BLACK, x + 1, y + 1, 42, 34);
+    bmp_printf(FONT(FONT_SMALL, COLOR_WHITE, COLOR_BLACK), x + 4, y + 12, "%s", abbr);
+    (void) accent;
+}
