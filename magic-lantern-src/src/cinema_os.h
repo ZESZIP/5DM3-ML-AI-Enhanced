@@ -61,6 +61,7 @@ void cinema_os_draw_page_background(cinema_os_page_t page, int y0, int h);
 int cinema_os_draw_cinematic_page(int list_y);
 int cinema_os_uses_cinematic_canvas(void);
 int cinema_os_uses_pro_shell(void);
+int cinema_os_skin_active(void);
 void cinema_os_draw_status_footer(void);
 void cinema_os_on_menu_open(void);
 

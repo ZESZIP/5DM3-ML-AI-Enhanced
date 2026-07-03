@@ -141,7 +141,15 @@ int cinema_os_uses_cinematic_canvas(void)
 
 int cinema_os_uses_pro_shell(void)
 {
-    return cinema_os_enabled();
+    return cinema_os_skin_active();
+}
+
+int cinema_os_skin_active(void)
+{
+    if (!cinema_os_enabled()) return 0;
+    /* PHOTO tab = standard ML Shoot menu (no custom chrome) */
+    if (cinema_os_active_page() == CINE_PAGE_PHOTO) return 0;
+    return 1;
 }
 
 void cinema_os_on_menu_open(void)
@@ -151,7 +159,7 @@ void cinema_os_on_menu_open(void)
 
 void cinema_os_draw_status_footer(void)
 {
-    if (!cinema_os_enabled()) return;
+    if (!cinema_os_skin_active()) return;
 
     int foot_y = 432;
     int page_c = cinema_os_page_color(cinema_os_active_page());

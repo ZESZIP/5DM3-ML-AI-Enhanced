@@ -2429,7 +2429,7 @@ static void submenu_key_hint(int x, int y, int fg, int bg, int chr)
 
 static void menu_clean_footer()
 {
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
+    if (cinema_os_skin_active())
         return;
     int h = 50;
     if (is_menu_active("Help")) h = font_med.height * 3 + 2;
@@ -2771,7 +2771,7 @@ entry_print(
     int x_font_offset = 0;
     int y_font_offset = (h - (int)font_large.height) / 2;
 
-    if (cinema_os_enabled() && !menu_lv_transparent_mode && !junkie_mode)
+    if (cinema_os_skin_active() && !menu_lv_transparent_mode && !junkie_mode)
     {
         int accent = cinema_os_page_color(cinema_os_active_page());
         if (in_submenu)
@@ -2796,7 +2796,7 @@ entry_print(
     if (not_at_home)
         info->rinfo[0] = 0;
 
-    if (cinema_os_enabled() && !submenu_level && !in_submenu && !not_at_home)
+    if (cinema_os_skin_active() && !submenu_level && !in_submenu && !not_at_home)
     {
         struct menu * tab = entry->parent_menu;
         while (tab && tab->parent_menu) tab = tab->parent_menu;
@@ -2810,7 +2810,7 @@ entry_print(
                 bmp_fill(accent, x - 10, y + 4, 5, h - 8);
         }
     }
-    else if (cinema_os_enabled() && in_submenu && !menu_lv_transparent_mode)
+    else if (cinema_os_skin_active() && in_submenu && !menu_lv_transparent_mode)
     {
         struct menu * tab = entry->parent_menu;
         while (tab && tab->parent_menu) tab = tab->parent_menu;
@@ -2976,7 +2976,7 @@ skip_name:
 
     int y_icon_offset = (h - 32) / 2 - 1;
 
-    if (!cinema_os_enabled() && entry->icon_type == IT_SUBMENU )
+    if (!cinema_os_skin_active() && entry->icon_type == IT_SUBMENU )
     {
         // Forward sign for submenus that open with SET
         submenu_key_hint(
@@ -2986,7 +2986,7 @@ skip_name:
             ICON_ML_FORWARD
         );
     }
-    else if (!cinema_os_enabled() && entry->children && !SUBMENU_OR_EDIT && !menu_lv_transparent_mode)
+    else if (!cinema_os_skin_active() && entry->children && !SUBMENU_OR_EDIT && !menu_lv_transparent_mode)
     {
         // Q sign for selected item, if submenu opens with Q
         // Discrete placeholder for non-selected item
@@ -3017,19 +3017,19 @@ skip_name:
     // selection bar
     if (entry->selected)
     {
-        int cine_os_row = cinema_os_enabled() && !menu_lv_transparent_mode && !junkie_mode
+        int cine_os_row = cinema_os_skin_active() && !menu_lv_transparent_mode && !junkie_mode
             && (in_submenu || !submenu_level);
 
         int color_left = 45;
         int color_right = menu_cine_colors ? menu_category_color_for_entry(entry) : MENU_BAR_COLOR;
-        if (cinema_os_enabled())
+        if (cinema_os_skin_active())
             color_right = cinema_os_page_color(cinema_os_active_page());
         if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
         if (customize_mode) { color_left = color_right = get_customize_color(); }
 
         if (!cine_os_row)
         {
-            if (cinema_os_enabled() && !menu_lv_transparent_mode)
+            if (cinema_os_skin_active() && !menu_lv_transparent_mode)
             {
                 cine_ui_draw_shadow(xl, y, x_end - xl, h, 2);
                 cine_ui_draw_selection_bar(xl, y, x_end - xl, h, color_right, 1);
@@ -3051,7 +3051,7 @@ skip_name:
 
     // display help
     if (entry->selected && !menu_lv_transparent_mode
-        && !(cinema_os_enabled() && (submenu_level || in_submenu)))
+        && !(cinema_os_skin_active() && (submenu_level || in_submenu)))
     {
         char help1_buf[MENU_MAX_HELP_LEN];
         char help2_buf[MENU_MAX_HELP_LEN];
@@ -3114,7 +3114,7 @@ skip_name:
 
     // if there's a warning message set, display it
     if (entry->selected && info->warning[0]
-        && !(cinema_os_enabled() && (submenu_level || in_submenu)))
+        && !(cinema_os_skin_active() && (submenu_level || in_submenu)))
     {
         int warn_color = 
             info->warning_level == MENU_WARN_INFO ? COLOR_GREEN1 : 
@@ -3154,7 +3154,7 @@ skip_name:
 static void
 menu_post_display()
 {
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
+    if (cinema_os_skin_active())
         return;
 
     char* cfg_preset = get_config_preset_name();
@@ -3648,7 +3648,7 @@ menu_display(
             }
             
             // display current entry
-            int row_h = cinema_os_enabled() ? cinema_os_entry_row_height() : font_large.height;
+            int row_h = cinema_os_skin_active() ? cinema_os_entry_row_height() : font_large.height;
             int ok = menu_entry_process(menu, entry, x, y, row_h + local_spacing, only_selected);
             
             // entry asked for custom draw? stop here
@@ -4061,7 +4061,7 @@ menu_display_junkie(
 static void
 show_hidden_items(struct menu * menu, int force_clear)
 {
-    if (cinema_os_enabled() && !junkie_mode)
+    if (cinema_os_skin_active() && !junkie_mode)
         return;
     // show any items that may be hidden
     if (!menu_lv_transparent_mode)
@@ -4149,7 +4149,7 @@ void menus_display(
     if (mod_menu_dirty)
         mod_menu_rebuild();
 
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
+    if (cinema_os_enabled())
     {
         select_menu_by_icon(cinema_os_page_menu_icon(cinema_os_active_page()));
     }
@@ -4214,7 +4214,7 @@ void menus_display(
 
     if (customize_mode) fgs = get_customize_color();
 
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode)
+    if (cinema_os_skin_active())
     {
         cinema_os_draw_nav_bar(y);
         if (!submenu && !cinema_os_uses_cinematic_canvas())
@@ -4228,7 +4228,7 @@ void menus_display(
         bmp_fill(bgu, orig_x, y, 720, 42);
     }
 
-    int list_y_base = y + (cinema_os_enabled() && !junkie_mode
+    int list_y_base = y + (cinema_os_skin_active() && !junkie_mode
         ? (cinema_os_uses_cinematic_canvas() && !submenu_level
             ? cinema_os_tab_bar_height() + 40
             : cinema_os_tab_bar_height() + 34)
@@ -4241,7 +4241,7 @@ void menus_display(
         if (IS_SUBMENU(menu))
             continue;
 
-        if (!cinema_os_enabled() || junkie_mode || menu_lv_transparent_mode)
+        if (!cinema_os_skin_active() || junkie_mode || menu_lv_transparent_mode)
         {
         int fg = menu->selected ? fgs : fgu;
         int bg = menu->selected ? bgs : bgu;
@@ -4301,7 +4301,7 @@ void menus_display(
         }
         else if( menu->selected)
         {
-            if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+            if (cinema_os_skin_active() && !submenu_level)
             {
                 if (cinema_os_uses_cinematic_canvas())
                     cinema_os_draw_cinematic_page(list_y_base);
@@ -4340,14 +4340,14 @@ void menus_display(
         //~ dim_screen(43, COLOR_BLACK, 0, 45, 720, 480-45-50);
         
         submenu_display(submenu);
-        if (!cinema_os_enabled() || junkie_mode || menu_lv_transparent_mode)
+        if (!cinema_os_skin_active() || junkie_mode || menu_lv_transparent_mode)
             show_vscroll(submenu);
     }
 
-    if (cinema_os_enabled() && !junkie_mode && !menu_lv_transparent_mode && !submenu_level)
+    if (cinema_os_skin_active() && !submenu_level)
         cinema_os_draw_status_footer();
 
-    if (cinema_os_enabled() && !junkie_mode && !submenu_level)
+    if (cinema_os_skin_active() && !junkie_mode && !submenu_level)
         cine_debug_draw_overlay();
 
     if (cinema_boot_menu_splash_blocking() && !cinema_boot_wizard_active())
@@ -4412,25 +4412,25 @@ submenu_display(struct menu *submenu)
         )
     {
         w = 720 - 2 * bx;
-        int header_accent = cinema_os_enabled()
+        int header_accent = cinema_os_skin_active()
             ? cine_ui_menu_accent(submenu)
             : (menu_cine_colors ? menu_category_color_from_menu(submenu) : MENU_BAR_COLOR);
-        int header_bg = cinema_os_enabled() ? COLOR_GRAY(15) : MENU_BG_COLOR_HEADER_FOOTER;
+        int header_bg = cinema_os_skin_active() ? COLOR_GRAY(15) : MENU_BG_COLOR_HEADER_FOOTER;
 
-        if (cinema_os_enabled())
+        if (cinema_os_skin_active())
         {
             cine_ui_draw_submenu_frame(bx, by, w, h, header_accent, submenu->name);
         }
         else
         {
         bmp_fill(header_bg,  bx,  by, w, 40);
-        if (menu_cine_colors || cinema_os_enabled())
-            bmp_fill(header_accent, bx, by, cinema_os_enabled() ? w : 5, cinema_os_enabled() ? 4 : 40);
+        if (menu_cine_colors || cinema_os_skin_active())
+            bmp_fill(header_accent, bx, by, cinema_os_skin_active() ? w : 5, cinema_os_skin_active() ? 4 : 40);
         bmp_fill(COLOR_BLACK,  bx,  by + 40, w, h-40);
         bmp_printf(FONT(FONT_CANON, COLOR_WHITE, NO_BG_ERASE),  bx + 15,  by + 2, "%s", submenu->name);
 
         for (int i = 0; i < 5; i++)
-            bmp_draw_rect(cinema_os_enabled() ? COLOR_ORANGE : 45,  bx - i,  by - i, w + i * 2, h + i * 2);
+            bmp_draw_rect(cinema_os_skin_active() ? COLOR_ORANGE : 45,  bx - i,  by - i, w + i * 2, h + i * 2);
 
         submenu_key_hint(720 - bx - 45, by + 5, COLOR_WHITE, MENU_BG_COLOR_HEADER_FOOTER, ICON_ML_Q_BACK);
         }
@@ -4961,7 +4961,7 @@ menu_redraw_do()
         
         menus_display( menus, 0, 0 ); 
 
-        if (!menu_lv_transparent_mode && !SUBMENU_OR_EDIT && !junkie_mode && !cinema_os_enabled())
+        if (!menu_lv_transparent_mode && !SUBMENU_OR_EDIT && !junkie_mode && !cinema_os_skin_active())
         {
             if (is_menu_active("Help"))
                 menu_show_version();
@@ -5454,7 +5454,7 @@ handle_ml_menu_keys(struct event * event)
         }
     // fall through
     case BGMT_WHEEL_UP:
-        if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
+        if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
             && cinema_os_uses_cinematic_canvas() && cinema_os_handle_key(BGMT_WHEEL_UP))
         {
             menu_damage = 1;
@@ -5491,7 +5491,7 @@ handle_ml_menu_keys(struct event * event)
         }
     // fall through
     case BGMT_WHEEL_DOWN:
-        if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
+        if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
             && cinema_os_uses_cinematic_canvas() && cinema_os_handle_key(BGMT_WHEEL_DOWN))
         {
             menu_damage = 1;
@@ -5540,7 +5540,7 @@ handle_ml_menu_keys(struct event * event)
         }
         else
         {
-            if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
+            if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
                 if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
                     && cinema_os_handle_key(BGMT_WHEEL_RIGHT))
@@ -5597,7 +5597,7 @@ handle_ml_menu_keys(struct event * event)
         }
         else
         {
-            if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
+            if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode)
             {
                 if (cinema_os_uses_cinematic_canvas() && cinema_panel_is_open()
                     && cinema_os_handle_key(BGMT_WHEEL_LEFT))
@@ -5636,7 +5636,7 @@ handle_ml_menu_keys(struct event * event)
     case BGMT_JOY_CENTER:
 #endif
     case BGMT_PRESS_SET:
-        if (cinema_os_enabled() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
+        if (cinema_os_skin_active() && !submenu_level && !edit_mode && !menu_lv_transparent_mode
             && cinema_os_uses_cinematic_canvas() && cinema_os_handle_key(BGMT_PRESS_SET))
         {
             menu_needs_full_redraw = 1;
@@ -5661,7 +5661,7 @@ handle_ml_menu_keys(struct event * event)
         break;
 
     case BGMT_INFO:
-        if (cinema_os_enabled() && (submenu_level || edit_mode))
+        if (cinema_os_skin_active() && (submenu_level || edit_mode))
             break;
         menu_help_active = !menu_help_active;
         menu_lv_transparent_mode = 0;
