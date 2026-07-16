@@ -1,5 +1,0 @@
-.. raw:: latex
-
-    \def\subsection{\oldssec}
-    \newpage
-
