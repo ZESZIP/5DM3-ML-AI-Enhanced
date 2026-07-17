@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cinema OS 5D3 — CINE Menu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stage">
+    <div class="bezel">
+      <div class="screen" id="screen">
+        <div class="bg" aria-hidden="true"></div>
+
+        <header class="topbar">
+          <div class="batt"><span class="batt-ico"></span> 85%</div>
+          <div class="title">MENU</div>
+          <div class="meta"><span class="wifi"></span> 14:32</div>
+        </header>
+
+        <nav class="tabs" role="tablist">
+          <button class="tab" data-tab="settings" style="--accent:#d4af37">SETTINGS</button>
+          <button class="tab" data-tab="photo" style="--accent:#3ddc84">PHOTO</button>
+          <button class="tab active" data-tab="cine" style="--accent:#e67e22">CINE</button>
+          <button class="tab" data-tab="addons" style="--accent:#3498db">ADD-ONS</button>
+          <button class="tab" data-tab="hacks" style="--accent:#9b59b6">HACKS</button>
+        </nav>
+
+        <main class="panel" id="panel">
+          <!-- filled by app.js -->
+        </main>
+
+        <footer class="bottombar">
+          <div class="batt"><span class="batt-ico"></span> 85%</div>
+          <div class="clock">14:32</div>
+          <div class="storage" id="storage">CFast A: 128GB</div>
+        </footer>
+      </div>
+    </div>
+    <aside class="legend">
+      <h1>Cinema OS</h1>
+      <p>Canon 5D Mark III · CSP Stream · ≤100&nbsp;MB/s continuous</p>
+      <ul>
+        <li>← → switch tabs</li>
+        <li>↑ ↓ move selection</li>
+        <li>Enter cycle value</li>
+      </ul>
+      <p class="mode" id="armed">Armed: CROP4K50_FULL → physics maps to bridge profile</p>
+    </aside>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
