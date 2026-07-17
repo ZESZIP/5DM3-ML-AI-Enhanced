@@ -3,15 +3,55 @@
 **Target platform:** Canon EOS 5D Mark III (firmware 1.2.3, DIGIC 5+)  
 **Mission:** Continuous high-end cinema recording (1080p100 / 4K50-class modes), live preview, custom **CSP** container under **≤100 MB/s**, then offline decompress to **ProRes Log** on a PC.
 
-This repository replaces the previous Magic Lantern UI overlay dump with a purpose-built cinema stack:
+## Menu preview (interactive)
+
+**Open the latest 1:1 CINE menu preview:**
+
+→ **[`pc/ui_preview/index.html`](pc/ui_preview/index.html)** (Hardened crystal · spacious mountains · v2)
+
+```bash
+python3 -m http.server 8765 --directory pc/ui_preview
+# then open http://127.0.0.1:8765
+```
+
+Design reference PNG: [`assets/cine_menu_preview.png`](assets/cine_menu_preview.png)  
+Visual match notes: [`docs/08_UI_DESIGN_MATCH.md`](docs/08_UI_DESIGN_MATCH.md)
+
+---
+
+## Updates log
+
+New work is appended here so each revision adds information instead of replacing context.
+
+### 2026-07-17 — UI preview v2 (hardened crystal + spacious mountains)
+
+- Rebuilt [`pc/ui_preview/`](pc/ui_preview/) to track the mockup **1:1**:
+  - Multi-layer **low-poly mountain** SVG with lit crystal facets, shadow facets, atmospheric haze, vignette, grain
+  - **Hardened crystal** selection prism (elongated hex, copper bevels, specular edge, faceted ends)
+  - Color **icon tabs**: SETTINGS / PHOTO / CINE / ADD-ONS / HACKS with accent underlines
+  - Default CINE values match the art: LUT **RAW**, FRAME RATE **25P**, Resolution **UHD 4160×2560 [4K]** selected, CODEC **MOV**, AUDIO **STEREO**, ASPECT **1.85:1**, footer **CFast A: 128GB**
+- Added [`docs/08_UI_DESIGN_MATCH.md`](docs/08_UI_DESIGN_MATCH.md) — detailed visual analysis of the mockup
+- README now leads with the preview link and keeps this cumulative **Updates log**
+
+### 2026-07-16 — Cinema OS CSP foundation
+
+- Replaced the prior Magic Lantern dump with Cinema OS stack (`firmware/`, `pc/csp_toolkit/`, `docs/`, `hardware/`)
+- CSP codec + zero-buffer stream engine + dual-stripe / SSD-bridge paths
+- Python toolkit: simulate / info / decode → ProRes Log
+- First interactive menu preview (v1) and engineering docs `docs/01`–`07`
+
+---
+
+## Repository map
 
 | Layer | What it is |
 |-------|------------|
 | `firmware/` | On-camera Cinema OS shell, zero-buffer stream engine, CSP recorder, dual-card striping |
 | `pc/csp_toolkit/` | Python encode/decode + ProRes Log export |
-| `pc/ui_preview/` | Interactive menu matching the cinema UI mockup |
-| `docs/` | Hardware physics, architecture, codec spec, mods, install |
+| `pc/ui_preview/` | **Interactive menu** matching the cinema UI mockup |
+| `docs/` | Hardware physics, architecture, codec spec, mods, install, UI match |
 | `hardware/` | SSD bridge + thermal BOM and wiring notes |
+| `assets/` | Design reference stills |
 
 ## Why a custom codec (not ProRes / MP4 in-camera)
 
@@ -50,13 +90,6 @@ python -m pc.csp_toolkit.cli simulate --mode CROP1080P100 --seconds 3 --out /tmp
 python -m pc.csp_toolkit.cli decode --in /tmp/demo.csp --prores /tmp/demo_log.mov
 ```
 
-Open the menu preview:
-
-```bash
-python3 -m http.server 8765 --directory pc/ui_preview
-# → http://127.0.0.1:8765
-```
-
 ## Camera install (high level)
 
 1. Canon firmware **1.2.3**
@@ -73,10 +106,8 @@ python3 -m http.server 8765 --directory pc/ui_preview
 4. [`docs/04_HARDWARE_MODS.md`](docs/04_HARDWARE_MODS.md) — SSD bridge, fans, power  
 5. [`docs/05_BITRATE_BUDGET.md`](docs/05_BITRATE_BUDGET.md) — math for ≤100 MB/s continuous  
 6. [`docs/06_INSTALL.md`](docs/06_INSTALL.md) — build, flash, verify  
-
-## Design reference
-
-Menu chrome follows [`assets/cine_menu_preview.png`](assets/cine_menu_preview.png): amber/copper cinema palette, tabbed shell, hexagonal selection on the active CINE row, dual status bars with storage (CFast/SSD when the bridge is fitted). Interactive twin: `pc/ui_preview/`.
+7. [`docs/07_ENGINEERING_LOG.md`](docs/07_ENGINEERING_LOG.md) — full design rationale  
+8. [`docs/08_UI_DESIGN_MATCH.md`](docs/08_UI_DESIGN_MATCH.md) — mockup analysis → preview v2  
 
 ## License & safety
 

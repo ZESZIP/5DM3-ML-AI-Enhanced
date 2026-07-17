@@ -3,53 +3,169 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cinema OS 5D3 — CINE Menu</title>
+  <title>Cinema OS 5D3 — Menu Preview v2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="stage">
-    <div class="bezel">
-      <div class="screen" id="screen">
-        <div class="bg" aria-hidden="true"></div>
-
-        <header class="topbar">
-          <div class="batt"><span class="batt-ico"></span> 85%</div>
-          <div class="title">MENU</div>
-          <div class="meta"><span class="wifi"></span> 14:32</div>
-        </header>
-
-        <nav class="tabs" role="tablist">
-          <button class="tab" data-tab="settings" style="--accent:#d4af37">SETTINGS</button>
-          <button class="tab" data-tab="photo" style="--accent:#3ddc84">PHOTO</button>
-          <button class="tab active" data-tab="cine" style="--accent:#e67e22">CINE</button>
-          <button class="tab" data-tab="addons" style="--accent:#3498db">ADD-ONS</button>
-          <button class="tab" data-tab="hacks" style="--accent:#9b59b6">HACKS</button>
-        </nav>
-
-        <main class="panel" id="panel">
-          <!-- filled by app.js -->
-        </main>
-
-        <footer class="bottombar">
-          <div class="batt"><span class="batt-ico"></span> 85%</div>
-          <div class="clock">14:32</div>
-          <div class="storage" id="storage">CFast A: 128GB</div>
-        </footer>
+  <div class="page">
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">Cinema OS · UI Preview v2</p>
+        <h1>Hardened crystal CINE menu</h1>
+        <p class="lede">1:1 interactive twin of the amber mountain mockup — spacious low-poly peaks, faceted copper selection prism, color-coded tabs.</p>
       </div>
+      <a class="ref-link" href="../../assets/cine_menu_preview.png" target="_blank" rel="noopener">Open design reference PNG</a>
+    </header>
+
+    <div class="stage">
+      <div class="bezel" aria-label="Camera LCD preview">
+        <div class="screen" id="screen">
+          <!-- Spacious crystalline mountain field -->
+          <div class="bg" aria-hidden="true">
+            <svg class="mountains" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2a1810"/>
+                  <stop offset="45%" stop-color="#1a100c"/>
+                  <stop offset="100%" stop-color="#0c0908"/>
+                </linearGradient>
+                <linearGradient id="sunBloom" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ffb060" stop-opacity=".55"/>
+                  <stop offset="55%" stop-color="#c45a18" stop-opacity=".18"/>
+                  <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="crystalHi" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#ffc078"/>
+                  <stop offset="35%" stop-color="#e07830"/>
+                  <stop offset="100%" stop-color="#6a3010"/>
+                </linearGradient>
+                <linearGradient id="crystalMid" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#c86828"/>
+                  <stop offset="50%" stop-color="#7a3a16"/>
+                  <stop offset="100%" stop-color="#2a140c"/>
+                </linearGradient>
+                <linearGradient id="crystalLo" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#3a2014"/>
+                  <stop offset="100%" stop-color="#140c08"/>
+                </linearGradient>
+                <linearGradient id="facetShine" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#ffe0a8" stop-opacity=".9"/>
+                  <stop offset="40%" stop-color="#ff9a40" stop-opacity=".35"/>
+                  <stop offset="100%" stop-color="#401808" stop-opacity="0"/>
+                </linearGradient>
+                <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="8" result="b"/>
+                  <feMerge>
+                    <feMergeNode in="b"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <rect width="1280" height="720" fill="url(#sky)"/>
+              <ellipse cx="980" cy="120" rx="420" ry="260" fill="url(#sunBloom)"/>
+
+              <!-- Far range — spacious, low contrast -->
+              <g opacity=".55">
+                <path fill="#3a2418" d="M0 430 L120 360 L210 400 L320 300 L410 370 L520 280 L640 350 L760 250 L900 330 L1040 220 L1180 310 L1280 270 L1280 720 L0 720Z"/>
+                <path fill="url(#facetShine)" d="M760 250 L820 290 L780 310Z" opacity=".35"/>
+                <path fill="url(#facetShine)" d="M1040 220 L1100 270 L1060 290Z" opacity=".3"/>
+              </g>
+
+              <!-- Mid crystalline peaks -->
+              <g>
+                <path fill="url(#crystalMid)" d="M0 500 L90 420 L170 470 L280 340 L360 410 L470 300 L560 380 L680 260 L790 360 L900 290 L1010 380 L1120 310 L1280 400 L1280 720 L0 720Z"/>
+                <!-- Lit facets -->
+                <path fill="url(#crystalHi)" d="M280 340 L330 390 L300 410 L250 380Z" opacity=".95"/>
+                <path fill="url(#crystalHi)" d="M470 300 L530 355 L490 375 L430 340Z"/>
+                <path fill="url(#crystalHi)" d="M680 260 L750 330 L700 350 L640 310Z"/>
+                <path fill="url(#crystalHi)" d="M900 290 L960 345 L920 365 L860 325Z" opacity=".9"/>
+                <path fill="url(#crystalHi)" d="M1120 310 L1190 370 L1145 390 L1075 345Z" opacity=".85"/>
+                <!-- Shadow facets -->
+                <path fill="#1a0e08" d="M280 340 L250 380 L200 360 L240 320Z" opacity=".65"/>
+                <path fill="#120a06" d="M680 260 L640 310 L600 290 L650 240Z" opacity=".7"/>
+                <path fill="#0e0804" d="M900 290 L860 325 L820 300 L870 260Z" opacity=".6"/>
+              </g>
+
+              <!-- Near ridge — darker, sharper crystal shards -->
+              <g>
+                <path fill="url(#crystalLo)" d="M0 560 L140 480 L240 540 L380 430 L500 520 L640 400 L780 500 L920 420 L1080 510 L1220 450 L1280 490 L1280 720 L0 720Z"/>
+                <path fill="#d87830" d="M380 430 L440 485 L400 505 L350 470Z" opacity=".75"/>
+                <path fill="#f0a050" d="M640 400 L700 460 L655 480 L600 440Z" opacity=".8"/>
+                <path fill="#c06020" d="M920 420 L980 480 L940 500 L880 455Z" opacity=".7"/>
+                <path fill="#080604" d="M380 430 L350 470 L300 450 L340 410Z" opacity=".75"/>
+                <path fill="#060402" d="M640 400 L600 440 L560 415 L610 375Z" opacity=".8"/>
+              </g>
+
+              <!-- Foreground base shards -->
+              <path fill="#100a08" d="M0 620 L200 580 L420 640 L700 560 L980 630 L1280 580 L1280 720 L0 720Z"/>
+              <path fill="#2a1810" d="M200 580 L260 610 L220 625Z" opacity=".5"/>
+              <path fill="#3a2014" d="M700 560 L760 595 L720 610Z" opacity=".45"/>
+
+              <!-- Atmospheric haze for spaciousness -->
+              <rect y="280" width="1280" height="200" fill="#1a100c" opacity=".18"/>
+              <rect y="480" width="1280" height="240" fill="#0a0806" opacity=".35"/>
+            </svg>
+            <div class="bg-vignette"></div>
+            <div class="bg-grain"></div>
+          </div>
+
+          <header class="topbar">
+            <div class="batt"><span class="batt-ico" aria-hidden="true"></span>85%</div>
+            <div class="title">MENU</div>
+            <div class="meta"><span class="wifi" aria-hidden="true"></span>14:32</div>
+          </header>
+
+          <nav class="tabs" role="tablist" aria-label="Cinema OS sections">
+            <button class="tab" data-tab="settings" style="--accent:#e6c35c" type="button">
+              <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4V7zm2 4h12v2H6v-2zm2 4h8v2H8v-2z"/></svg>
+              SETTINGS
+            </button>
+            <button class="tab" data-tab="photo" style="--accent:#4adf84" type="button">
+              <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5L9 4zm3 4.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm0 2A2.5 2.5 0 1 1 9.5 13 2.5 2.5 0 0 1 12 10.5z"/></svg>
+              PHOTO
+            </button>
+            <button class="tab active" data-tab="cine" style="--accent:#f07828" type="button">
+              <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h12a2 2 0 0 1 2 2v1.2l4-2.2v9.6l-4-2.2V16a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
+              CINE
+            </button>
+            <button class="tab" data-tab="addons" style="--accent:#4aa3ef" type="button">
+              <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3h3v3h3v3h-3v3h-3V9h-3V6h3V3zM4 13h3v3h3v3H7v3H4v-3H1v-3h3v-3zm9 1h3v3h3v3h-3v3h-3v-3h-3v-3h3v-3z"/></svg>
+              ADD-ONS
+            </button>
+            <button class="tab" data-tab="hacks" style="--accent:#b46be8" type="button">
+              <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2L4 14h7l-1 8 10-14h-7l0-6z"/></svg>
+              HACKS
+            </button>
+          </nav>
+
+          <main class="panel" id="panel"></main>
+
+          <div class="scroll-rail" aria-hidden="true"><div class="scroll-thumb"></div></div>
+
+          <footer class="bottombar">
+            <div class="batt"><span class="batt-ico" aria-hidden="true"></span>85%</div>
+            <div class="clock">14:32</div>
+            <div class="storage" id="storage">CFast A: 128GB</div>
+          </footer>
+        </div>
+      </div>
+
+      <aside class="legend">
+        <h2>Match notes</h2>
+        <ul>
+          <li>Spacious low-poly mountain field with lit crystal facets</li>
+          <li>Copper hardened-crystal selection prism (bevel + specular)</li>
+          <li>Color icons on SETTINGS / PHOTO / CINE / ADD-ONS / HACKS</li>
+          <li>Default CINE row: Resolution · UHD 4160×2560 [4K]</li>
+        </ul>
+        <p class="mode" id="armed">Armed: …</p>
+        <p class="hint">← → tabs · ↑ ↓ select · Enter cycle value</p>
+      </aside>
     </div>
-    <aside class="legend">
-      <h1>Cinema OS</h1>
-      <p>Canon 5D Mark III · CSP Stream · ≤100&nbsp;MB/s continuous</p>
-      <ul>
-        <li>← → switch tabs</li>
-        <li>↑ ↓ move selection</li>
-        <li>Enter cycle value</li>
-      </ul>
-      <p class="mode" id="armed">Armed: CROP4K50_FULL → physics maps to bridge profile</p>
-    </aside>
   </div>
   <script src="app.js"></script>
 </body>
